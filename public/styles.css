@@ -204,6 +204,13 @@ h1 {
   line-height: 1.15;
 }
 
+.app-author {
+  margin-top: 7px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
 h2 {
   font-size: 18px;
 }
