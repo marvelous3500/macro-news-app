@@ -59,6 +59,7 @@ const state = {
   activeMonth: monthKey(),
   calendar: null,
   marketData: null,
+  monthlyHistory: {},
   data: loadStoredFundamentalData()
 };
 
@@ -311,6 +312,61 @@ function journalDraft() {
     ...defaultJournalDraft(),
     ...(monthRecord().journalDraft || {})
   };
+}
+
+function mergeMonthlyHistory(month, history) {
+  const record = monthRecord(month);
+  record.events = record.events || {};
+  let changed = false;
+
+  ECON_EVENTS.forEach((event) => {
+    const incoming = history.events?.[event.id];
+    if (!incoming) return;
+    const existing = {
+      ...defaultEventData(event),
+      ...(record.events[event.id] || {})
+    };
+    const next = { ...existing };
+    ["actual", "forecast", "previous"].forEach((field) => {
+      if ((next[field] === "" || next[field] === null || typeof next[field] === "undefined") && incoming[field] !== "") {
+        next[field] = incoming[field];
+        changed = true;
+      }
+    });
+    if (incoming.source) {
+      next.source = incoming.source;
+      next.sourceTitle = incoming.sourceTitle;
+      next.sourceDate = incoming.sourceDate;
+    }
+    record.events[event.id] = next;
+  });
+
+  if (changed) saveFundamentalData();
+  return changed;
+}
+
+async function loadMonthlyHistory(month = state.activeMonth) {
+  if (!isPreviousMonth(month)) {
+    state.monthlyHistory[month] = null;
+    renderGuideSummary();
+    return;
+  }
+
+  monthlyRecapStatus.textContent = `Loading Forex Factory history for ${month}...`;
+  try {
+    const response = await fetch(`/api/monthly-history?month=${encodeURIComponent(month)}`);
+    const history = await response.json();
+    if (!response.ok) throw new Error(history.error || "Failed to load monthly history");
+    state.monthlyHistory[month] = history;
+    mergeMonthlyHistory(month, history);
+  } catch (error) {
+    state.monthlyHistory[month] = {
+      sourceStatus: "unavailable",
+      error: error.message,
+      events: {}
+    };
+  }
+  renderFundamentalGuide();
 }
 
 function eventData(eventId) {
@@ -825,13 +881,20 @@ function buildMonthlyOutcomeSummary() {
 
 function renderMonthlyRecap() {
   const selectedIsPast = isPreviousMonth();
+  const history = state.monthlyHistory[state.activeMonth];
   monthlyRecapStatus.textContent = selectedIsPast
-    ? `${state.activeMonth} completed-month review`
+    ? history?.sourceStatus === "live"
+      ? `${state.activeMonth} completed-month review | Forex Factory loaded`
+      : history?.sourceStatus === "unavailable"
+        ? `${state.activeMonth} completed-month review | Forex Factory unavailable`
+        : `${state.activeMonth} completed-month review`
     : "Current month live setup";
 
   const completed = ECON_EVENTS.filter((event) => hasActual(event.id)).length;
   const recapIntro = selectedIsPast
-    ? `Reviewing ${completed} of ${ECON_EVENTS.length} stored releases for ${state.activeMonth}.`
+    ? history?.sourceStatus === "live"
+      ? `Reviewing ${completed} of ${ECON_EVENTS.length} releases for ${state.activeMonth}. Forex Factory scanned ${history.daysScanned || 0} days and found ${Object.keys(history.events || {}).length} tracked releases.`
+      : `Reviewing ${completed} of ${ECON_EVENTS.length} stored releases for ${state.activeMonth}.`
     : "This month is still active. As you enter actual data, this becomes a running recap.";
 
   const monthOutcome = buildMonthlyOutcomeSummary();
@@ -1807,6 +1870,7 @@ monthPicker.addEventListener("change", () => {
   renderCalendar();
   renderFundamentalGuide();
   loadCalendar();
+  loadMonthlyHistory(state.activeMonth);
 });
 
 eventOverride.addEventListener("change", () => {
@@ -1826,6 +1890,7 @@ async function init() {
   renderCalendar();
   renderMarketData();
   loadCalendar();
+  loadMonthlyHistory(state.activeMonth);
   loadMarketData();
   loadNews();
 }

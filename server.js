@@ -173,6 +173,32 @@ function focusEventFromCalendar(events) {
   return priority.find((id) => ids.includes(id)) || "";
 }
 
+function normalizeMacroValue(value = "") {
+  const cleaned = String(value).replace(/,/g, "").trim();
+  if (!cleaned) return "";
+  const match = cleaned.match(/-?\d+(\.\d+)?/);
+  return match ? match[0] : "";
+}
+
+function monthlyEventIdFromTitle(title = "") {
+  const lowered = title.toLowerCase();
+  if (lowered.includes("adp")) return "";
+  if (lowered.includes("non-farm employment change") || lowered.includes("nonfarm payroll") || lowered.includes("non-farm payroll")) return "nfp";
+  if (lowered === "ism manufacturing pmi" || lowered.includes("manufacturing pmi")) return "pmi";
+  if (lowered === "ppi m/m" || lowered.includes(" ppi m/m") || lowered.startsWith("ppi m/m")) return "ppi";
+  if (lowered === "cpi m/m" || lowered.includes(" cpi m/m") || lowered.startsWith("cpi m/m")) return "cpi";
+  return "";
+}
+
+function eventPriority(title = "") {
+  const lowered = title.toLowerCase();
+  if (lowered === "ism manufacturing pmi") return 0;
+  if (lowered.includes("non-farm employment change") && !lowered.includes("adp")) return 0;
+  if (lowered.includes("core")) return 3;
+  if (lowered.includes("flash")) return 2;
+  return 1;
+}
+
 function scoreText(text) {
 	const lowered = text.toLowerCase();
 	let usd = 0;
@@ -407,6 +433,72 @@ async function getEconomicCalendar(requestedDate = new Date()) {
   };
 }
 
+async function getMonthlyMacroHistory(month) {
+  if (!/^\d{4}-\d{2}$/.test(month || "")) {
+    throw new Error("month must be in YYYY-MM format");
+  }
+
+  const [year, monthNumber] = month.split("-").map(Number);
+  const daysInMonth = new Date(Date.UTC(year, monthNumber, 0)).getUTCDate();
+  const selected = {};
+  const sourceDays = [];
+  let liveDays = 0;
+
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    const date = new Date(Date.UTC(year, monthNumber - 1, day));
+    const calendar = await getEconomicCalendar(date);
+    sourceDays.push({
+      date: calendar.date,
+      status: calendar.sourceStatus,
+      count: calendar.events.length
+    });
+    if (calendar.sourceStatus === "live") liveDays += 1;
+
+    for (const event of calendar.events) {
+      const id = monthlyEventIdFromTitle(event.title);
+      if (!id) continue;
+      const candidate = {
+        title: event.title,
+        date: calendar.date,
+        time: event.time,
+        actual: normalizeMacroValue(event.actual),
+        forecast: normalizeMacroValue(event.forecast),
+        previous: normalizeMacroValue(event.previous),
+        source: calendar.source,
+        sourceUrl: calendar.sourceUrl,
+        priority: eventPriority(event.title)
+      };
+      if (!candidate.actual && !candidate.forecast && !candidate.previous) continue;
+      if (!selected[id] || candidate.priority < selected[id].priority) {
+        selected[id] = candidate;
+      }
+    }
+  }
+
+  const events = {};
+  for (const [id, event] of Object.entries(selected)) {
+    events[id] = {
+      actual: event.actual,
+      forecast: event.forecast,
+      previous: event.previous,
+      updatedAt: new Date().toISOString(),
+      source: "Forex Factory",
+      sourceTitle: event.title,
+      sourceDate: event.date
+    };
+  }
+
+  return {
+    month,
+    source: "Forex Factory",
+    sourceStatus: liveDays > 0 ? "live" : "unavailable",
+    liveDays,
+    daysScanned: daysInMonth,
+    events,
+    sourceDays
+  };
+}
+
 async function getNews() {
   const pages = await Promise.allSettled(SOURCE_URLS.map(fetchSource));
   const xItems = await fetchXItems();
@@ -553,6 +645,10 @@ const server = http.createServer(async (req, res) => {
       const dateParam = url.searchParams.get("date");
       const requestedDate = dateParam ? new Date(`${dateParam}T00:00:00Z`) : new Date();
       json(res, 200, await getEconomicCalendar(requestedDate));
+      return;
+    }
+    if (url.pathname === "/api/monthly-history") {
+      json(res, 200, await getMonthlyMacroHistory(url.searchParams.get("month")));
       return;
     }
     if (url.pathname === "/api/market-data") {
