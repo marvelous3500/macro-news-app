@@ -1,0 +1,72 @@
+{
+  "months": {
+    "2026-06": {
+      "override": "auto",
+      "events": {
+        "pmi": {
+          "previous": "50",
+          "forecast": "50.2",
+          "actual": "51.1"
+        },
+        "nfp": {
+          "previous": "150",
+          "forecast": "165",
+          "actual": "190"
+        },
+        "ppi": {
+          "previous": "0.2",
+          "forecast": "0.2",
+          "actual": "0.4"
+        }
+      },
+      "market": {
+        "yields": "auto",
+        "usd": "auto",
+        "risk": "auto",
+        "fomc": "hold",
+        "dxy": "",
+        "us10y": "",
+        "gold": "",
+        "nas100": "",
+        "us30": "",
+        "btc": "",
+        "usdjpy": ""
+      },
+      "scenario": {
+        "event": "cpi",
+        "actual": "",
+        "forecast": "",
+        "previous": ""
+      },
+      "postNews": {
+        "event": "cpi",
+        "actual": "",
+        "forecast": "",
+        "previous": "",
+        "reaction": "pending",
+        "note": ""
+      },
+      "checklist": {
+        "forecastChecked": false,
+        "previousChecked": false,
+        "actualChecked": false,
+        "dxyChecked": false,
+        "yieldsChecked": false,
+        "assetChecked": false
+      },
+      "journalDraft": {
+        "event": "cpi",
+        "bias": "",
+        "actual": "",
+        "reaction": "",
+        "lesson": ""
+      },
+      "trades": [],
+      "memory": []
+    },
+    "2026-05": {
+      "override": "auto",
+      "events": {}
+    }
+  }
+}

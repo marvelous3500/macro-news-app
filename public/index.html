@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Macroeconomics Data</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Fundamental guide and live macro rhetoric monitor</p>
+          <h1>Macroeconomics Data</h1>
+        </div>
+        <div class="top-actions">
+          <a class="nav-link" href="/learn">Learn</a>
+          <div class="theme-toggle" role="group" aria-label="Theme">
+            <button id="lightThemeBtn" class="theme-btn active" type="button">Light</button>
+            <button id="darkThemeBtn" class="theme-btn" type="button">Dark</button>
+          </div>
+          <button id="refreshBtn" class="refresh-btn" type="button">Refresh</button>
+        </div>
+      </header>
+
+      <section class="guide" aria-label="Fundamental guide">
+        <div class="guide-head">
+          <div>
+            <p class="eyebrow">Economic order of events</p>
+            <h2 id="nextEventTitle">Next event loading</h2>
+          </div>
+          <div class="guide-bias">
+            <label class="guide-select">
+              Month
+              <input id="monthPicker" type="month" />
+            </label>
+            <label class="guide-select">
+              Expected next
+              <select id="eventOverride">
+                <option value="auto">Auto</option>
+                <option value="pmi">PMI</option>
+                <option value="nfp">NFP</option>
+                <option value="ppi">PPI</option>
+                <option value="cpi">CPI</option>
+              </select>
+            </label>
+            <span id="usdBias">USD neutral</span>
+            <span id="goldBias">Gold neutral</span>
+          </div>
+        </div>
+
+        <article class="guide-panel expectation-panel">
+          <h3>What To Expect Next</h3>
+          <p id="nextEventNarrative" class="guide-copy">Reading stored data...</p>
+          <div class="checklist" id="expectationList"></div>
+        </article>
+
+        <div class="event-rail" id="eventRail"></div>
+        <div class="calendar-panel" id="calendarPanel">
+          <div class="calendar-head">
+            <strong>Today’s Calendar</strong>
+            <span id="calendarStatus">Loading Forex Factory...</span>
+          </div>
+          <div id="calendarList" class="calendar-list"></div>
+        </div>
+
+        <section class="macro-engine" aria-label="Macro chain engine">
+          <div class="macro-head">
+            <div>
+              <p class="eyebrow">Macro chain engine</p>
+              <h2 id="macroRegime">Reading growth and inflation...</h2>
+            </div>
+            <div class="macro-badges">
+              <span id="fedBias">Fed neutral</span>
+              <span id="yieldBias">Yields mixed</span>
+              <span id="riskBias">Risk mixed</span>
+            </div>
+          </div>
+
+          <div class="chain-flow" id="chainFlow"></div>
+          <div class="asset-grid" id="assetGrid"></div>
+
+          <div class="decision-grid">
+            <article class="decision-panel wide">
+              <div class="panel-title">
+                <h3>Daily Playbook</h3>
+                <span id="confidenceBadge">Confidence loading</span>
+              </div>
+              <div id="dailyPlaybook" class="playbook-list"></div>
+            </article>
+
+            <article class="decision-panel">
+              <h3>Trade Bias Scores</h3>
+              <div id="tradeBiasScores" class="score-list"></div>
+            </article>
+
+            <article class="decision-panel hidden-panel" hidden>
+              <h3>Scenario Builder</h3>
+              <div id="scenarioBuilder" class="scenario-builder"></div>
+            </article>
+
+            <article class="decision-panel hidden-panel" hidden>
+              <h3>Post-News Reaction</h3>
+              <div id="postNewsTracker" class="post-news"></div>
+            </article>
+
+            <article class="decision-panel wide hidden-panel" hidden>
+              <h3>Market Confirmation</h3>
+              <div id="marketConfirmation" class="market-confirmation"></div>
+            </article>
+
+            <article class="decision-panel hidden-panel" hidden>
+              <h3>Macro Memory</h3>
+              <div id="macroMemory" class="macro-memory"></div>
+            </article>
+
+            <article class="decision-panel">
+              <h3>Alerts</h3>
+              <div id="alertPanel" class="alert-panel"></div>
+            </article>
+          </div>
+
+          <section class="learning-center" aria-label="Fundamental learning center">
+            <div class="macro-head compact">
+              <div>
+                <p class="eyebrow">Learning center</p>
+                <h2>Understand the fundamental story</h2>
+              </div>
+              <div class="macro-badges">
+                <span>Beginner mode</span>
+                <span>Checklist</span>
+                <span>Journal</span>
+              </div>
+            </div>
+
+            <div class="learning-grid">
+              <article class="decision-panel wide">
+                <h3>Explain Mode</h3>
+                <div id="explainMode" class="learn-list"></div>
+              </article>
+
+              <article class="decision-panel wide">
+                <h3>Cause And Effect</h3>
+                <div id="causeEffect" class="cause-effect"></div>
+              </article>
+
+              <article class="decision-panel">
+                <h3>Event Education</h3>
+                <div id="educationCards" class="education-cards"></div>
+              </article>
+
+              <article class="decision-panel">
+                <h3>Before / After Checklist</h3>
+                <div id="newsChecklist" class="news-checklist"></div>
+              </article>
+
+              <article class="decision-panel">
+                <h3>Contradiction Detector</h3>
+                <div id="contradictionDetector" class="contradiction-box"></div>
+              </article>
+
+              <article class="decision-panel">
+                <h3>Glossary</h3>
+                <div id="glossaryPanel" class="glossary-panel"></div>
+              </article>
+
+              <article class="decision-panel wide">
+                <h3>Trade Journal</h3>
+                <div id="tradeJournal" class="trade-journal"></div>
+              </article>
+            </div>
+          </section>
+        </section>
+
+        <div class="guide-grid">
+          <article class="guide-panel">
+            <h3>Previous Data</h3>
+            <div class="data-editor" id="dataEditor"></div>
+            <div class="manual-controls" id="manualControls"></div>
+          </article>
+        </div>
+
+        <div class="source-strip">
+          <span>News sources</span>
+          <strong>White House live</strong>
+          <strong>X/Twitter optional API</strong>
+          <strong>Economic calendar manual input</strong>
+        </div>
+      </section>
+
+      <section class="metrics" aria-label="Macro scores">
+        <div class="metric">
+          <span class="label">USD Impact</span>
+          <strong id="usdScore">0.0</strong>
+          <span class="hint">-10 bearish to +10 bullish</span>
+        </div>
+        <div class="metric">
+          <span class="label">Geopolitical Risk</span>
+          <strong id="riskScore">0.0</strong>
+          <span class="hint">0 calm to 10 extreme risk</span>
+        </div>
+        <div class="metric">
+          <span class="label">Relevant Items</span>
+          <strong id="itemCount">0</strong>
+          <span id="updatedAt" class="hint">Waiting for update</span>
+        </div>
+      </section>
+
+      <section class="signal-band">
+        <canvas id="signalCanvas" width="1100" height="220"></canvas>
+      </section>
+
+      <section class="toolbar" aria-label="Filters">
+        <button class="filter active" data-filter="all" type="button">All</button>
+        <button class="filter" data-filter="usd" type="button">USD movers</button>
+        <button class="filter" data-filter="risk" type="button">War risk</button>
+        <button class="filter" data-filter="trade" type="button">Trade</button>
+      </section>
+
+      <section>
+        <div class="section-title">
+          <h2>Filtered News</h2>
+          <p id="modeText">Keyword scoring mode</p>
+        </div>
+        <div id="newsList" class="news-list"></div>
+      </section>
+    </main>
+
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>
