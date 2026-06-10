@@ -374,6 +374,71 @@ function mergeMonthlyHistory(month, history) {
   return changed;
 }
 
+function normalizeMacroInput(value = "") {
+  const match = String(value).replace(/,/g, "").match(/-?\d+(\.\d+)?/);
+  return match ? match[0] : "";
+}
+
+function calendarEventPriority(eventId, title = "") {
+  const lowered = title.toLowerCase();
+  if ((eventId === "cpi" || eventId === "ppi") && lowered === `${eventId} m/m`) return 0;
+  if ((eventId === "cpi" || eventId === "ppi") && lowered.includes("core")) return 2;
+  if ((eventId === "cpi" || eventId === "ppi") && lowered.includes("y/y")) return 3;
+  return 1;
+}
+
+function bestCalendarEvent(eventId) {
+  const matches = (state.calendar?.events || [])
+    .filter((event) => eventIdFromTitle(event.title) === eventId)
+    .sort((a, b) => calendarEventPriority(eventId, a.title) - calendarEventPriority(eventId, b.title));
+  return matches[0] || null;
+}
+
+function mergeCurrentCalendarData() {
+  if (!state.calendar?.events?.length || state.activeMonth !== monthKey()) return false;
+
+  const record = monthRecord();
+  record.events = record.events || {};
+  let changed = false;
+
+  ECON_EVENTS.forEach((event) => {
+    const incoming = bestCalendarEvent(event.id);
+    if (!incoming) return;
+
+    const existing = {
+      ...defaultEventData(event),
+      ...(record.events[event.id] || {})
+    };
+    const defaults = defaultEventData(event);
+    const next = { ...existing };
+
+    ["actual", "forecast", "previous"].forEach((field) => {
+      const value = normalizeMacroInput(incoming[field]);
+      if (!value) return;
+      const shouldUpdate = (
+        next[field] === ""
+        || next[field] === null
+        || typeof next[field] === "undefined"
+        || String(next[field]) === String(defaults[field])
+      );
+      if (shouldUpdate && String(next[field]) !== value) {
+        next[field] = value;
+        changed = true;
+      }
+    });
+
+    if (incoming.actualSource || incoming.date) {
+      next.source = incoming.actualSource || state.calendar.source || "Economic calendar";
+      next.sourceTitle = incoming.title;
+      next.sourceDate = incoming.date || state.calendar.date;
+    }
+    record.events[event.id] = next;
+  });
+
+  if (changed) saveFundamentalData();
+  return changed;
+}
+
 async function loadMonthlyHistory(month = state.activeMonth) {
   if (!isPreviousMonth(month)) {
     state.monthlyHistory[month] = null;
@@ -1048,11 +1113,14 @@ function renderGuideSummary() {
   const nextEvent = ECON_EVENTS.find((event) => event.id === nextEventId);
   const signal = buildFundamentalSignal(nextEventId);
   const macro = buildMacroModel();
+  const allEventsComplete = ECON_EVENTS.every((event) => hasActual(event.id));
   monthPicker.value = state.activeMonth;
   eventOverride.value = monthRecord().override || "auto";
 
-  nextEventTitle.textContent = `${nextEvent.name} is the next focus`;
-  nextEventNarrative.textContent = signal.narrative;
+  nextEventTitle.textContent = allEventsComplete ? "Monthly macro releases are done" : `${nextEvent.name} is the next focus`;
+  nextEventNarrative.textContent = allEventsComplete
+    ? "PMI, NFP, PPI and CPI all have actual data. Use the full monthly outcome plus DXY and US10Y confirmation for bias."
+    : signal.narrative;
   usdBias.textContent = biasLabel("USD", signal.usd);
   goldBias.textContent = biasLabel("Gold", signal.gold);
 
@@ -1833,6 +1901,7 @@ async function loadCalendar() {
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || "Failed to load calendar");
     state.calendar = data;
+    mergeCurrentCalendarData();
   } catch (error) {
     state.calendar = {
       date: monthKey(),
