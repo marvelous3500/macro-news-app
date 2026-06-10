@@ -1,6 +1,6 @@
 # Macro News App
 
-Macro News App is a fundamental trading tool developed by **Marvelous Sylvester**.
+Macro News App is a fundamental trading tool created for macroeconomic data analysis, market confirmation, and trading education.
 
 Live app: https://macro-news-app-twmt.onrender.com/
 
@@ -13,4 +13,4 @@ The app helps traders study macroeconomic data, track PMI, NFP, PPI and CPI, rev
 
 ## Author
 
-Developed by Marvelous Sylvester.
+Marvelous Sylvester.
