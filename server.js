@@ -37,7 +37,6 @@ const MARKET_SYMBOLS = [
   { id: "eurusd", label: "EUR/USD", yahoo: "EURUSD=X" },
   { id: "gbpusd", label: "GBP/USD", yahoo: "GBPUSD=X" },
   { id: "usdjpy", label: "USD/JPY", yahoo: "JPY=X" },
-  { id: "nas100", label: "NAS100", yahoo: "NQ=F" },
   { id: "btc", label: "BTC/USD", yahoo: "BTC-USD" }
 ];
 

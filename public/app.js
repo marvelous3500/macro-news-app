@@ -260,7 +260,6 @@ function defaultMarketControls() {
     dxy: "",
     us10y: "",
     gold: "",
-    nas100: "",
     us30: "",
     btc: "",
     usdjpy: ""
@@ -591,14 +590,12 @@ function buildMacroModel() {
   const riskScoreValue = risk === "on" ? 2 : risk === "off" ? -2 : 0;
   const assetScores = {
     gold: Math.max(-10, Math.min(10, -2 * yieldScore - 2 * usdScore + (risk === "off" ? 1 : 0))),
-    nas100: Math.max(-10, Math.min(10, -2 * yieldScore - fedScore + riskScoreValue)),
     us30: Math.max(-10, Math.min(10, growth - yieldScore - inflation * 0.6)),
     btc: Math.max(-10, Math.min(10, riskScoreValue - usdScore - yieldScore)),
     jpy: Math.max(-10, Math.min(10, risk === "off" ? 5 : risk === "on" ? -4 : 0))
   };
 
   const gold = scoreLabel(assetScores.gold, "Bullish", "Bearish / pressured");
-  const nas100 = scoreLabel(assetScores.nas100, "Bullish", "Bearish / fail risk");
   const us30 = scoreLabel(assetScores.us30, "Bullish", "Bearish");
   const btc = scoreLabel(assetScores.btc, "Bullish risk-on", "Bearish risk-off");
   const jpy = scoreLabel(assetScores.jpy, "Bullish safe haven", "Bearish safe haven", "Mixed safe haven");
@@ -642,7 +639,6 @@ function buildMacroModel() {
     assetScores,
     assets: [
       { id: "gold", name: "Gold", bias: gold, score: assetScores.gold, why: "Higher yields and stronger USD pressure gold; lower yields support it." },
-      { id: "nas100", name: "NAS100", bias: nas100, score: assetScores.nas100, why: "Expensive borrowing and compressed margins hurt long-duration tech." },
       { id: "us30", name: "US30", bias: us30, score: assetScores.us30, why: "Dow likes steady growth, but hawkish Fed pressure can drag cyclicals." },
       { id: "btc", name: "BTC", bias: btc, score: assetScores.btc, why: "BTC behaves like risk-on liquidity when USD/yields are not squeezing." },
       { id: "jpy", name: "JPY", bias: jpy, score: assetScores.jpy, why: "JPY is treated as a safe haven when risk-off pressure rises." }
@@ -873,12 +869,12 @@ function predictCpiOutcome() {
       label: `Higher CPI expected (${confidenceText})`,
       tone: "bullish",
       confidence,
-      summary: `Prediction before CPI: released data leans toward a hotter CPI print with ${confidenceText}. If CPI confirms hot, expect stronger USD, higher yields, Gold pressure and NAS100 pressure.`,
+      summary: `Prediction before CPI: released data leans toward a hotter CPI print with ${confidenceText}. If CPI confirms hot, expect stronger USD, higher yields and Gold pressure.`,
       details: [
         `Prediction confidence: ${confidenceText}`,
         "Expected USD outcome: stronger dollar bias",
         "Expected yields: higher if CPI confirms hot",
-        "Expected Gold/NAS100: bearish pressure",
+        "Expected Gold: bearish pressure",
         ...reasons.slice(0, 3)
       ]
     };
@@ -889,12 +885,12 @@ function predictCpiOutcome() {
       label: `Softer CPI possible (${confidenceText})`,
       tone: "bearish",
       confidence,
-      summary: `Prediction before CPI: prior data leans cooler with ${confidenceText}. If CPI confirms soft, expect weaker USD, lower yields, Gold relief and NAS100 relief.`,
+      summary: `Prediction before CPI: prior data leans cooler with ${confidenceText}. If CPI confirms soft, expect weaker USD, lower yields and Gold relief.`,
       details: [
         `Prediction confidence: ${confidenceText}`,
         "Expected USD outcome: weaker dollar bias",
         "Expected yields: lower if CPI confirms soft",
-        "Expected Gold/NAS100: bullish relief",
+        "Expected Gold: bullish relief",
         ...reasons.slice(0, 3)
       ]
     };
@@ -910,7 +906,7 @@ function predictCpiOutcome() {
       `Prediction confidence: ${confidenceText}`,
       "Expected USD outcome: mixed until CPI lands",
       "Expected yields: mixed until CPI lands",
-      "Expected Gold/NAS100: wait for CPI reaction",
+      "Expected Gold: wait for CPI reaction",
       ...reasons.slice(0, 3)
     ]
   };
@@ -931,8 +927,8 @@ function outcomeForEvent(eventId, stateLabel) {
   }
   if (eventId === "nfp") {
     return stateLabel === "beat"
-      ? "Labor was strong. The Fed has less reason to cut, so USD/yields can rise and Gold/NAS100 can face pressure."
-      : "Labor was weak. Cut expectations can rise, yields can fall, and Gold/NAS100 may get relief.";
+      ? "Labor was strong. The Fed has less reason to cut, so USD/yields can rise and Gold can face pressure."
+      : "Labor was weak. Cut expectations can rise, yields can fall, and Gold may get relief.";
   }
   if (eventId === "ppi") {
     return stateLabel === "beat"
@@ -941,8 +937,8 @@ function outcomeForEvent(eventId, stateLabel) {
   }
   if (eventId === "cpi") {
     return stateLabel === "beat"
-      ? "Consumer inflation was hot. USD and yields usually rise while Gold/NAS100 face pressure."
-      : "Consumer inflation cooled. Yields and USD can fall while Gold/NAS100 can rally.";
+      ? "Consumer inflation was hot. USD and yields usually rise while Gold faces pressure."
+      : "Consumer inflation cooled. Yields and USD can fall while Gold can rally.";
   }
   return "Review DXY, US10Y and asset reaction after the release.";
 }
@@ -950,34 +946,34 @@ function outcomeForEvent(eventId, stateLabel) {
 function outcomeDetailsForEvent(eventId, stateLabel) {
   if (stateLabel === "missing") {
     if (eventId === "cpi") return predictCpiOutcome().details;
-    return ["USD outcome: unknown", "Yields: unknown", "Gold/NAS100: wait for actual data"];
+    return ["USD outcome: unknown", "Yields: unknown", "Gold: wait for actual data"];
   }
   if (stateLabel === "inline") {
-    return ["USD outcome: mixed", "Yields: mixed", "Gold/NAS100: wait for live confirmation"];
+    return ["USD outcome: mixed", "Yields: mixed", "Gold: wait for live confirmation"];
   }
 
   const beat = stateLabel === "beat";
   if (eventId === "pmi") {
     return beat
-      ? ["USD outcome: stronger dollar bias", "Yields: can rise if growth optimism improves", "Gold/NAS100: pressure if yields confirm higher"]
-      : ["USD outcome: weaker dollar bias", "Yields: can fall on growth concern", "Gold/NAS100: relief if yields confirm lower"];
+      ? ["USD outcome: stronger dollar bias", "Yields: can rise if growth optimism improves", "Gold: pressure if yields confirm higher"]
+      : ["USD outcome: weaker dollar bias", "Yields: can fall on growth concern", "Gold: relief if yields confirm lower"];
   }
   if (eventId === "nfp") {
     return beat
-      ? ["USD outcome: strong dollar bias", "Yields: higher because Fed cuts become less likely", "Gold/NAS100: bearish pressure from higher yields"]
-      : ["USD outcome: weak dollar bias", "Yields: lower because cut expectations can rise", "Gold/NAS100: bullish relief if recession fear stays controlled"];
+      ? ["USD outcome: strong dollar bias", "Yields: higher because Fed cuts become less likely", "Gold: bearish pressure from higher yields"]
+      : ["USD outcome: weak dollar bias", "Yields: lower because cut expectations can rise", "Gold: bullish relief if recession fear stays controlled"];
   }
   if (eventId === "ppi") {
     return beat
-      ? ["USD outcome: stronger dollar bias", "Yields: higher because inflation risk rises", "Gold/NAS100: bearish pressure before CPI"]
-      : ["USD outcome: softer dollar bias", "Yields: lower if inflation fear cools", "Gold/NAS100: relief before CPI"];
+      ? ["USD outcome: stronger dollar bias", "Yields: higher because inflation risk rises", "Gold: bearish pressure before CPI"]
+      : ["USD outcome: softer dollar bias", "Yields: lower if inflation fear cools", "Gold: relief before CPI"];
   }
   if (eventId === "cpi") {
     return beat
-      ? ["USD outcome: strong dollar bias", "Yields: higher because Fed stays hawkish", "Gold/NAS100: bearish pressure"]
-      : ["USD outcome: weak dollar bias", "Yields: lower because inflation cooled", "Gold/NAS100: bullish relief"];
+      ? ["USD outcome: strong dollar bias", "Yields: higher because Fed stays hawkish", "Gold: bearish pressure"]
+      : ["USD outcome: weak dollar bias", "Yields: lower because inflation cooled", "Gold: bullish relief"];
   }
-  return ["USD outcome: mixed", "Yields: check US10Y", "Gold/NAS100: wait for price confirmation"];
+  return ["USD outcome: mixed", "Yields: check US10Y", "Gold: wait for price confirmation"];
 }
 
 function buildMonthlyOutcomeSummary() {
@@ -989,7 +985,7 @@ function buildMonthlyOutcomeSummary() {
       title: "Not enough data to classify this month",
       bullets: [
         "No actual releases are stored for this month yet.",
-        "Add PMI, NFP, PPI and CPI actual values to know if the month was strong-dollar, weak-dollar, Gold bullish, or NAS100 pressured.",
+        "Add PMI, NFP, PPI and CPI actual values to know if the month was strong-dollar, weak-dollar, Gold bullish, or Gold pressured.",
         "Until then, this month should be treated as historical data missing, not a trading signal."
       ]
     };
@@ -1025,7 +1021,7 @@ function buildMonthlyOutcomeSummary() {
 
   const bullets = [
     strongGrowth ? "Growth data leaned strong, which normally supports USD and raises yield pressure." : weakGrowth ? "Growth data leaned weak, which can soften USD and lower yields." : "Growth data was mixed or incomplete.",
-    hotInflation ? "Inflation data leaned hot, which keeps the Fed hawkish and pressures Gold/NAS100." : coolInflation ? "Inflation data cooled, which can weaken USD/yields and support Gold/NAS100." : "Inflation data was mixed or incomplete.",
+    hotInflation ? "Inflation data leaned hot, which keeps the Fed hawkish and pressures Gold." : coolInflation ? "Inflation data cooled, which can weaken USD/yields and support Gold." : "Inflation data was mixed or incomplete.",
     strongDollar ? "Main outcome: stronger USD bias, Gold pressured, EUR/USD and GBP/USD pressured." : weakDollar ? "Main outcome: weaker USD bias, Gold relief, EUR/USD and GBP/USD supported." : "Main outcome: no clean dollar direction; use DXY and US10Y confirmation."
   ];
 
@@ -1154,7 +1150,7 @@ function renderGuideSummary() {
     { title: "Fed", value: macro.labels.fed },
     { title: "Bond Yields", value: macro.labels.yields },
     { title: "USD", value: macro.labels.usd },
-    { title: "Assets", value: "Gold / NAS100 / US30 / BTC" }
+    { title: "Assets", value: "Gold / USD pairs / BTC" }
   ];
   chainFlow.innerHTML = chain.map((item, index) => `
     <div class="chain-node">
@@ -1282,17 +1278,6 @@ function buildForecastOutlook(macro, nextEventId) {
           : "Lower yields can pressure USD/JPY."
     },
     {
-      symbol: "NAS100",
-      marketId: "nas100",
-      title: "NAS100 forecast has changed",
-      score: macro.assetScores.nas100,
-      reason: yieldForce > 0
-        ? "Higher yields raise valuation pressure on tech."
-        : yieldForce < 0
-          ? "Lower yields can relieve pressure on tech."
-          : "NAS100 needs yield and risk-sentiment confirmation."
-    },
-    {
       symbol: "BTC/USD",
       marketId: "btc",
       title: "BTCUSD forecast has changed",
@@ -1320,10 +1305,10 @@ function scenarioOutcomeText(scenario) {
   const surpriseValue = actual - forecast;
   const eventName = ECON_EVENTS.find((event) => event.id === scenario.event)?.name || "event";
   if (surpriseValue > 0) {
-    return `${eventName} beats forecast. Expect hawkish Fed repricing, higher yields, stronger USD, Gold/NAS100 pressure.`;
+    return `${eventName} beats forecast. Expect hawkish Fed repricing, higher yields, stronger USD and Gold pressure.`;
   }
   if (surpriseValue < 0) {
-    return `${eventName} misses forecast. Expect softer yields, weaker USD, Gold/NAS100 relief if risk does not break.`;
+    return `${eventName} misses forecast. Expect softer yields, weaker USD and Gold relief if risk does not break.`;
   }
   return `${eventName} is inline. Wait for DXY and US10Y confirmation before forcing a trade.`;
 }
@@ -1351,8 +1336,8 @@ function renderDecisionPanels(macro, nextEventId) {
 
   const nextName = ECON_EVENTS.find((event) => event.id === nextEventId)?.name || "next report";
   dailyPlaybook.innerHTML = [
-    `${nextName} hot: USD and yields up, Gold pressured, NAS100 fail risk.`,
-    `${nextName} soft: yields down, USD weaker, Gold relief, NAS100 relief.`,
+    `${nextName} hot: USD and yields up, Gold pressured.`,
+    `${nextName} soft: yields down, USD weaker, Gold relief.`,
     `${nextName} inline: wait for DXY and US10Y confirmation before entering.`,
     `Risk-off shock: JPY can bid even if USD is also strong.`
   ].map((item) => `<p>${item}</p>`).join("");
@@ -1482,15 +1467,14 @@ function renderMarketConfirmation(macro) {
     ["dxy", "DXY"],
     ["us10y", "US10Y"],
     ["gold", "Gold"],
-    ["nas100", "NAS100"],
     ["us30", "US30"],
     ["btc", "BTC"],
     ["usdjpy", "USDJPY"]
   ];
   const confirmation = macro.directions.usd === "up" && macro.directions.yields === "up"
-    ? "Macro wants DXY and US10Y higher. Gold/NAS100 bearish only when market confirms."
+    ? "Macro wants DXY and US10Y higher. Gold bearish only when market confirms."
     : macro.directions.usd === "down" && macro.directions.yields === "down"
-      ? "Macro wants DXY and US10Y lower. Gold/NAS100 bullish only when market confirms."
+      ? "Macro wants DXY and US10Y lower. Gold bullish only when market confirms."
       : "Mixed setup. Use live market reaction before entering.";
 
   marketConfirmation.innerHTML = `
@@ -1562,7 +1546,6 @@ function renderExplainMode(macro, nextEventId) {
     `Hot PPI often warns that CPI may also come hot because producer costs can move into consumer prices.`,
     `${nextName} matters because it can change Fed expectations. A hotter print usually supports higher yields and USD.`,
     `Gold dislikes higher real yields and a strong USD, so hot inflation with hawkish Fed pricing pressures Gold.`,
-    `NAS100 is sensitive to borrowing costs. Higher yields reduce valuation multiples and pressure tech stocks.`,
     `JPY acts like a safe haven. In risk-off markets, traders may buy JPY even when other assets fall.`
   ];
   explainMode.innerHTML = explanations.map((item) => `<p>${item}</p>`).join("");
@@ -1575,8 +1558,7 @@ function renderCauseEffect(macro) {
     macro.labels.fed,
     macro.labels.yields,
     macro.labels.usd,
-    `Gold ${macro.assets[0].bias}`,
-    `NAS100 ${macro.assets[1].bias}`
+    `Gold ${macro.assetScores.gold >= 2 ? "bullish" : macro.assetScores.gold <= -2 ? "bearish" : "mixed"}`
   ];
   causeEffect.innerHTML = nodes.map((node, index) => `
     <div class="effect-node">
@@ -1591,7 +1573,7 @@ function renderEducationCards() {
     ["PMI", "Business manager survey. Above 50 means expansion. It leads NFP because strong orders can become hiring."],
     ["NFP", "Labor market report. Strong jobs reduce rate-cut pressure and can lift USD/yields."],
     ["PPI", "Wholesale inflation. It can warn that CPI may come hot because firms pass costs to consumers."],
-    ["CPI", "Consumer inflation. This is one of the biggest Fed repricing events for USD, yields, Gold and NAS100."],
+    ["CPI", "Consumer inflation. This is one of the biggest Fed repricing events for USD, yields and Gold."],
     ["FOMC", "Fed decision and guidance. Hike or higher-for-longer usually supports USD/yields and pressures risk assets."],
     ["DXY / US10Y", "Confirmation tools. If macro says bearish Gold, DXY and US10Y should usually confirm upward."]
   ];
@@ -1611,7 +1593,7 @@ function renderNewsChecklist() {
     ["actualChecked", "After: I entered actual vs forecast."],
     ["dxyChecked", "After: DXY confirmed the expected USD direction."],
     ["yieldsChecked", "After: US10Y confirmed the expected yield direction."],
-    ["assetChecked", "After: Gold/NAS100/BTC reaction agrees with the macro story."]
+    ["assetChecked", "After: Gold and USD reaction agrees with the macro story."]
   ];
   newsChecklist.innerHTML = items.map(([key, label]) => `
     <label class="check-row">
@@ -1642,9 +1624,6 @@ function renderContradictionDetector(macro) {
   if (macro.assetScores.gold <= -2 && controls.gold && Number(controls.gold) > 0) {
     warnings.push("Gold bias is bearish, but Gold is rising. Do not force the short until confirmation appears.");
   }
-  if (macro.assetScores.nas100 <= -2 && controls.nas100 && Number(controls.nas100) > 0) {
-    warnings.push("NAS100 bias is bearish, but NAS100 is rising. This is a divergence.");
-  }
   contradictionDetector.innerHTML = warnings.length
     ? warnings.map((item) => `<p class="warning-line">${item}</p>`).join("")
     : '<p class="ok-line">No contradiction detected. Keep checking DXY, US10Y and asset reaction after the release.</p>';
@@ -1652,9 +1631,9 @@ function renderContradictionDetector(macro) {
 
 function renderGlossary() {
   const terms = [
-    ["Risk-on", "Traders buy growth assets like NAS100 and BTC."],
+    ["Risk-on", "Traders buy growth and liquidity assets like BTC."],
     ["Risk-off", "Traders reduce risk and may buy safe havens like JPY or Gold."],
-    ["Yields", "Bond return. Higher yields often strengthen USD and pressure Gold/NAS100."],
+    ["Yields", "Bond return. Higher yields often strengthen USD and pressure Gold."],
     ["DXY", "US Dollar Index. Confirms broad USD strength or weakness."],
     ["Safe haven", "Asset traders buy when fear rises. JPY is often treated this way."],
     ["Hawkish", "Fed language or data that supports higher rates."],
@@ -1676,7 +1655,7 @@ function renderTradeJournal() {
       <label>Event
         <select data-journal="event">${ECON_EVENTS.map((event) => `<option value="${event.id}">${event.name}</option>`).join("")}</select>
       </label>
-      <label>Bias <input data-journal="bias" value="${draft.bias}" placeholder="Gold bearish, NAS100 bearish" /></label>
+      <label>Bias <input data-journal="bias" value="${draft.bias}" placeholder="Gold bearish, USD bullish" /></label>
       <label>Actual <input data-journal="actual" value="${draft.actual}" placeholder="CPI 0.5 vs 0.3" /></label>
       <label>Reaction <input data-journal="reaction" value="${draft.reaction}" placeholder="DXY up, US10Y up" /></label>
       <label>Lesson <textarea data-journal="lesson" placeholder="What did I learn?">${draft.lesson}</textarea></label>
@@ -1854,7 +1833,7 @@ function renderMarketData() {
   }
 
   const quotes = state.marketData.quotes || {};
-  const quoteItems = ["dxy", "us10y", "gold", "eurusd", "gbpusd", "usdjpy", "nas100", "btc"]
+  const quoteItems = ["dxy", "us10y", "gold", "eurusd", "gbpusd", "usdjpy", "btc"]
     .map((id) => quotes[id])
     .filter(Boolean);
 
