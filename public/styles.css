@@ -221,6 +221,23 @@ h1 {
   line-height: 1.45;
 }
 
+.analysis-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.analysis-tags span {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--chip);
+  color: var(--ink);
+  padding: 7px 9px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
 h2 {
   font-size: 18px;
 }
