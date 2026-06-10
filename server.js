@@ -424,6 +424,7 @@ async function getEconomicCalendar(requestedDate = new Date()) {
   if (events.length === 0 && CALENDAR_FALLBACKS[key]) {
     events = CALENDAR_FALLBACKS[key];
   }
+  events = events.map((event) => ({ ...event, date: key }));
 
   return {
     date: key,

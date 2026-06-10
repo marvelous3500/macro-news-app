@@ -697,12 +697,37 @@ function eventSurpriseState(eventId) {
   };
 }
 
+function calendarEventDate(eventId) {
+  const event = state.calendar?.events?.find((item) => eventIdFromTitle(item.title) === eventId);
+  return event?.date || "";
+}
+
+function eventIdFromTitle(title = "") {
+  const lowered = title.toLowerCase();
+  if (lowered.includes("cpi")) return "cpi";
+  if (lowered.includes("ppi")) return "ppi";
+  if (lowered.includes("non-farm") || lowered.includes("nonfarm") || lowered.includes("nfp")) return "nfp";
+  if (lowered.includes("pmi")) return "pmi";
+  return "";
+}
+
+function shouldUsePpiForCpiPrediction() {
+  if (!hasActual("ppi")) return false;
+  const ppiDate = eventData("ppi").sourceDate || calendarEventDate("ppi");
+  const cpiDate = eventData("cpi").sourceDate || calendarEventDate("cpi");
+  if (ppiDate && cpiDate) return ppiDate <= cpiDate;
+  return hasActual("ppi") && !state.calendar?.focusEventId;
+}
+
 function predictCpiOutcome() {
   const pmiState = eventSurpriseState("pmi").state;
   const nfpState = eventSurpriseState("nfp").state;
   const ppiState = eventSurpriseState("ppi").state;
   const ppiValue = latestValue("ppi");
   const ppiForecast = Number(eventData("ppi").forecast || 0);
+  const cpiForecast = Number(eventData("cpi").forecast);
+  const cpiPrevious = Number(eventData("cpi").previous);
+  const ppiCanGuideCpi = shouldUsePpiForCpiPrediction();
   let score = 0;
   let availableWeight = 0;
   const reasons = [];
@@ -727,15 +752,30 @@ function predictCpiOutcome() {
     availableWeight += 1;
     reasons.push("NFP missed forecast, so demand may be cooling.");
   }
-  if (ppiState === "beat" || (hasActual("ppi") && ppiValue > ppiForecast)) {
+  if (ppiCanGuideCpi && (ppiState === "beat" || (hasActual("ppi") && ppiValue > ppiForecast))) {
     score += 2;
     availableWeight += 2;
     reasons.push("PPI was hot, so producer costs can feed into CPI.");
   }
-  if (ppiState === "miss") {
+  if (ppiCanGuideCpi && ppiState === "miss") {
     score -= 2;
     availableWeight += 2;
     reasons.push("PPI cooled, so CPI pressure may soften.");
+  }
+  if (!ppiCanGuideCpi && hasActual("ppi")) {
+    reasons.push("PPI is ignored for this CPI setup because it comes after CPI on the calendar.");
+  }
+  if (!ppiCanGuideCpi && !Number.isNaN(cpiForecast) && !Number.isNaN(cpiPrevious)) {
+    availableWeight += 1;
+    if (cpiForecast > cpiPrevious) {
+      score += 1;
+      reasons.push("CPI forecast is above previous, so inflation is expected to accelerate.");
+    } else if (cpiForecast < cpiPrevious) {
+      score -= 1;
+      reasons.push("CPI forecast is below previous, so inflation is expected to cool.");
+    } else {
+      reasons.push("CPI forecast is equal to previous, so no acceleration is expected.");
+    }
   }
 
   const confidence = availableWeight === 0
@@ -749,7 +789,7 @@ function predictCpiOutcome() {
       label: `Higher CPI expected (${confidenceText})`,
       tone: "bullish",
       confidence,
-      summary: `Prediction before CPI: PMI/NFP/PPI lean toward a hotter CPI print with ${confidenceText}. If CPI confirms hot, expect stronger USD, higher yields, Gold pressure and NAS100 pressure.`,
+      summary: `Prediction before CPI: released data leans toward a hotter CPI print with ${confidenceText}. If CPI confirms hot, expect stronger USD, higher yields, Gold pressure and NAS100 pressure.`,
       details: [
         `Prediction confidence: ${confidenceText}`,
         "Expected USD outcome: stronger dollar bias",
@@ -781,7 +821,7 @@ function predictCpiOutcome() {
     label: `CPI prediction mixed (${confidenceText})`,
     tone: "mixed",
     confidence,
-    summary: `Prediction before CPI: PMI/NFP/PPI are mixed or incomplete, so confidence is ${confidenceText}. Wait for actual CPI plus DXY and US10Y confirmation.`,
+    summary: `Prediction before CPI: released data is mixed or incomplete, so confidence is ${confidenceText}. Wait for actual CPI plus DXY and US10Y confirmation.`,
     details: [
       `Prediction confidence: ${confidenceText}`,
       "Expected USD outcome: mixed until CPI lands",
