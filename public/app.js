@@ -111,6 +111,9 @@ const calendarStatus = document.querySelector("#calendarStatus");
 const calendarList = document.querySelector("#calendarList");
 const marketStatus = document.querySelector("#marketStatus");
 const marketList = document.querySelector("#marketList");
+const pageLoader = document.querySelector("#pageLoader");
+const pageLoaderTitle = document.querySelector("#pageLoaderTitle");
+const pageLoaderText = document.querySelector("#pageLoaderText");
 const canvas = document.querySelector("#signalCanvas");
 const ctx = canvas.getContext("2d");
 
@@ -140,6 +143,13 @@ function monthKey(date = new Date()) {
 
 function isPreviousMonth(month = state.activeMonth) {
   return month < monthKey();
+}
+
+function setPageLoading(isLoading, title = "Loading data", text = "Please wait while the app fetches macroeconomic data.") {
+  pageLoaderTitle.textContent = title;
+  pageLoaderText.textContent = text;
+  pageLoader.hidden = !isLoading;
+  document.body.classList.toggle("is-loading", isLoading);
 }
 
 function loadStoredFundamentalData() {
@@ -355,6 +365,11 @@ async function loadMonthlyHistory(month = state.activeMonth) {
   }
 
   state.monthlyHistoryLoading = true;
+  setPageLoading(
+    true,
+    "Loading monthly macro history",
+    `Fetching PMI, NFP, PPI and CPI for ${month} from Forex Factory.`
+  );
   renderMonthlyRecap();
   try {
     const response = await fetch(`/api/monthly-history?month=${encodeURIComponent(month)}`);
@@ -370,6 +385,7 @@ async function loadMonthlyHistory(month = state.activeMonth) {
     };
   }
   state.monthlyHistoryLoading = false;
+  setPageLoading(false);
   renderFundamentalGuide();
 }
 

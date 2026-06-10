@@ -7,6 +7,14 @@
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
+    <div id="pageLoader" class="page-loader" hidden aria-live="polite" aria-busy="true">
+      <div class="page-loader-card">
+        <span class="page-loader-spinner"></span>
+        <strong id="pageLoaderTitle">Loading data</strong>
+        <p id="pageLoaderText">Please wait while the app fetches macroeconomic data.</p>
+      </div>
+    </div>
+
     <main class="shell">
       <header class="topbar">
         <div>
