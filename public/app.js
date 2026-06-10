@@ -74,6 +74,8 @@ const dataEditor = document.querySelector("#dataEditor");
 const nextEventTitle = document.querySelector("#nextEventTitle");
 const nextEventNarrative = document.querySelector("#nextEventNarrative");
 const expectationList = document.querySelector("#expectationList");
+const monthlyRecapStatus = document.querySelector("#monthlyRecapStatus");
+const monthlyRecap = document.querySelector("#monthlyRecap");
 const usdBias = document.querySelector("#usdBias");
 const goldBias = document.querySelector("#goldBias");
 const macroRegime = document.querySelector("#macroRegime");
@@ -132,6 +134,10 @@ function themeColor(name) {
 
 function monthKey(date = new Date()) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function isPreviousMonth(month = state.activeMonth) {
+  return month < monthKey();
 }
 
 function loadStoredFundamentalData() {
@@ -564,6 +570,210 @@ function formatEventValue(event, value) {
   return `${value}${event.suffix || ""}`;
 }
 
+function eventSurpriseState(eventId) {
+  const data = eventData(eventId);
+  const actual = Number(data.actual);
+  const forecast = Number(data.forecast);
+  if (data.actual === "" || Number.isNaN(actual) || Number.isNaN(forecast)) {
+    return {
+      state: "missing",
+      label: "No actual data",
+      tone: "mixed",
+      surprise: 0
+    };
+  }
+
+  const surpriseValue = actual - forecast;
+  if (surpriseValue > 0) {
+    return {
+      state: "beat",
+      label: "Beat forecast",
+      tone: "bullish",
+      surprise: surpriseValue
+    };
+  }
+  if (surpriseValue < 0) {
+    return {
+      state: "miss",
+      label: "Missed forecast",
+      tone: "bearish",
+      surprise: surpriseValue
+    };
+  }
+  return {
+    state: "inline",
+    label: "In line",
+    tone: "mixed",
+    surprise: 0
+  };
+}
+
+function outcomeForEvent(eventId, stateLabel) {
+  if (stateLabel === "missing") {
+    return "No outcome yet. Add the actual value to know whether this release supported a strong dollar, weak dollar, higher yields, or lower yields.";
+  }
+  if (stateLabel === "inline") {
+    return "Inline data usually creates a mixed outcome. DXY and US10Y confirmation decides whether the market still trades the prior bias.";
+  }
+  if (eventId === "pmi") {
+    return stateLabel === "beat"
+      ? "Growth improved. This usually supports USD and can pressure Gold if yields rise."
+      : "Growth weakened. This can soften USD and support Gold if yields fall.";
+  }
+  if (eventId === "nfp") {
+    return stateLabel === "beat"
+      ? "Labor was strong. The Fed has less reason to cut, so USD/yields can rise and Gold/NAS100 can face pressure."
+      : "Labor was weak. Cut expectations can rise, yields can fall, and Gold/NAS100 may get relief.";
+  }
+  if (eventId === "ppi") {
+    return stateLabel === "beat"
+      ? "Producer inflation was hot. Traders prepare for hotter CPI and a more hawkish Fed setup."
+      : "Producer inflation cooled. CPI risk can soften and yields/USD may ease.";
+  }
+  if (eventId === "cpi") {
+    return stateLabel === "beat"
+      ? "Consumer inflation was hot. USD and yields usually rise while Gold/NAS100 face pressure."
+      : "Consumer inflation cooled. Yields and USD can fall while Gold/NAS100 can rally.";
+  }
+  return "Review DXY, US10Y and asset reaction after the release.";
+}
+
+function outcomeDetailsForEvent(eventId, stateLabel) {
+  if (stateLabel === "missing") {
+    return ["USD outcome: unknown", "Yields: unknown", "Gold/NAS100: wait for actual data"];
+  }
+  if (stateLabel === "inline") {
+    return ["USD outcome: mixed", "Yields: mixed", "Gold/NAS100: wait for live confirmation"];
+  }
+
+  const beat = stateLabel === "beat";
+  if (eventId === "pmi") {
+    return beat
+      ? ["USD outcome: stronger dollar bias", "Yields: can rise if growth optimism improves", "Gold/NAS100: pressure if yields confirm higher"]
+      : ["USD outcome: weaker dollar bias", "Yields: can fall on growth concern", "Gold/NAS100: relief if yields confirm lower"];
+  }
+  if (eventId === "nfp") {
+    return beat
+      ? ["USD outcome: strong dollar bias", "Yields: higher because Fed cuts become less likely", "Gold/NAS100: bearish pressure from higher yields"]
+      : ["USD outcome: weak dollar bias", "Yields: lower because cut expectations can rise", "Gold/NAS100: bullish relief if recession fear stays controlled"];
+  }
+  if (eventId === "ppi") {
+    return beat
+      ? ["USD outcome: stronger dollar bias", "Yields: higher because inflation risk rises", "Gold/NAS100: bearish pressure before CPI"]
+      : ["USD outcome: softer dollar bias", "Yields: lower if inflation fear cools", "Gold/NAS100: relief before CPI"];
+  }
+  if (eventId === "cpi") {
+    return beat
+      ? ["USD outcome: strong dollar bias", "Yields: higher because Fed stays hawkish", "Gold/NAS100: bearish pressure"]
+      : ["USD outcome: weak dollar bias", "Yields: lower because inflation cooled", "Gold/NAS100: bullish relief"];
+  }
+  return ["USD outcome: mixed", "Yields: check US10Y", "Gold/NAS100: wait for price confirmation"];
+}
+
+function buildMonthlyOutcomeSummary() {
+  const results = ECON_EVENTS.map((event) => ({ event, result: eventSurpriseState(event.id) }));
+  const completed = results.filter(({ result }) => result.state !== "missing").length;
+  if (completed === 0) {
+    return {
+      tone: "mixed",
+      title: "Not enough data to classify this month",
+      bullets: [
+        "No actual releases are stored for this month yet.",
+        "Add PMI, NFP, PPI and CPI actual values to know if the month was strong-dollar, weak-dollar, Gold bullish, or NAS100 pressured.",
+        "Until then, this month should be treated as historical data missing, not a trading signal."
+      ]
+    };
+  }
+
+  let usdScore = 0;
+  let inflationScore = 0;
+  let growthScore = 0;
+  results.forEach(({ event, result }) => {
+    if (result.state === "missing" || result.state === "inline") return;
+    const direction = result.state === "beat" ? 1 : -1;
+    if (event.id === "pmi" || event.id === "nfp") growthScore += direction;
+    if (event.id === "ppi" || event.id === "cpi") inflationScore += direction;
+    usdScore += direction;
+  });
+
+  const strongDollar = usdScore >= 2;
+  const weakDollar = usdScore <= -2;
+  const hotInflation = inflationScore > 0;
+  const coolInflation = inflationScore < 0;
+  const strongGrowth = growthScore > 0;
+  const weakGrowth = growthScore < 0;
+
+  const title = strongDollar
+    ? "Strong dollar month"
+    : weakDollar
+      ? "Weak dollar month"
+      : hotInflation
+        ? "Inflation-led hawkish month"
+        : coolInflation
+          ? "Cooling inflation month"
+          : "Mixed macro month";
+
+  const bullets = [
+    strongGrowth ? "Growth data leaned strong, which normally supports USD and raises yield pressure." : weakGrowth ? "Growth data leaned weak, which can soften USD and lower yields." : "Growth data was mixed or incomplete.",
+    hotInflation ? "Inflation data leaned hot, which keeps the Fed hawkish and pressures Gold/NAS100." : coolInflation ? "Inflation data cooled, which can weaken USD/yields and support Gold/NAS100." : "Inflation data was mixed or incomplete.",
+    strongDollar ? "Main outcome: stronger USD bias, Gold pressured, EUR/USD and GBP/USD pressured." : weakDollar ? "Main outcome: weaker USD bias, Gold relief, EUR/USD and GBP/USD supported." : "Main outcome: no clean dollar direction; use DXY and US10Y confirmation."
+  ];
+
+  return {
+    tone: strongDollar || hotInflation ? "bullish" : weakDollar || coolInflation ? "bearish" : "mixed",
+    title,
+    bullets
+  };
+}
+
+function renderMonthlyRecap() {
+  const selectedIsPast = isPreviousMonth();
+  monthlyRecapStatus.textContent = selectedIsPast
+    ? `${state.activeMonth} completed-month review`
+    : "Current month live setup";
+
+  const completed = ECON_EVENTS.filter((event) => hasActual(event.id)).length;
+  const recapIntro = selectedIsPast
+    ? `Reviewing ${completed} of ${ECON_EVENTS.length} stored releases for ${state.activeMonth}.`
+    : "This month is still active. As you enter actual data, this becomes a running recap.";
+
+  const monthOutcome = buildMonthlyOutcomeSummary();
+  monthlyRecap.innerHTML = `
+    <p class="guide-copy">${recapIntro}</p>
+    <article class="monthly-outcome ${monthOutcome.tone}">
+      <strong>${monthOutcome.title}</strong>
+      ${monthOutcome.bullets.map((item) => `<span>${item}</span>`).join("")}
+    </article>
+    <div class="recap-grid">
+      ${ECON_EVENTS.map((event) => {
+        const data = eventData(event.id);
+        const result = eventSurpriseState(event.id);
+        const surpriseText = result.state === "missing"
+          ? "Waiting for actual"
+          : `${result.surprise > 0 ? "+" : ""}${result.surprise.toFixed(2)}${event.suffix || ""} surprise`;
+        return `
+          <article class="recap-card ${result.tone}">
+            <div class="recap-head">
+              <strong>${event.name}</strong>
+              <span>${result.label}</span>
+            </div>
+            <div class="recap-values">
+              <small>Forecast <b>${formatEventValue(event, data.forecast)}</b></small>
+              <small>Actual <b>${formatEventValue(event, data.actual)}</b></small>
+              <small>Previous <b>${formatEventValue(event, data.previous)}</b></small>
+            </div>
+            <em>${surpriseText}</em>
+            <p>${outcomeForEvent(event.id, result.state)}</p>
+            <div class="recap-details">
+              ${outcomeDetailsForEvent(event.id, result.state).map((item) => `<small>${item}</small>`).join("")}
+            </div>
+          </article>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
+
 function renderGuideSummary() {
   const nextEventId = currentMonthlyStage();
   const nextEvent = ECON_EVENTS.find((event) => event.id === nextEventId);
@@ -628,6 +838,7 @@ function renderGuideSummary() {
     `;
   }).join("");
   renderDecisionPanels(macro, nextEventId);
+  renderMonthlyRecap();
 }
 
 function formatSigned(value) {

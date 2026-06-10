@@ -259,6 +259,147 @@ h2 {
   overflow: hidden;
 }
 
+.monthly-recap-panel {
+  margin-bottom: 14px;
+}
+
+.monthly-recap {
+  display: grid;
+  gap: 10px;
+}
+
+.monthly-outcome {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--control);
+  padding: 12px;
+}
+
+.monthly-outcome.bullish {
+  border-color: var(--bullish-line);
+  background: var(--bullish-bg);
+}
+
+.monthly-outcome.bearish {
+  border-color: var(--bearish-line);
+  background: var(--bearish-bg);
+}
+
+.monthly-outcome.mixed {
+  border-color: var(--warning-line);
+  background: var(--warning-bg);
+}
+
+.monthly-outcome strong,
+.monthly-outcome span {
+  display: block;
+}
+
+.monthly-outcome strong {
+  margin-bottom: 8px;
+}
+
+.monthly-outcome span {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.monthly-outcome span + span {
+  margin-top: 5px;
+}
+
+.recap-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.recap-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--control);
+  padding: 12px;
+}
+
+.recap-card.bullish {
+  border-color: var(--bullish-line);
+  background: var(--bullish-bg);
+}
+
+.recap-card.bearish {
+  border-color: var(--bearish-line);
+  background: var(--bearish-bg);
+}
+
+.recap-card.mixed {
+  border-color: var(--warning-line);
+  background: var(--warning-bg);
+}
+
+.recap-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: start;
+}
+
+.recap-head strong,
+.recap-head span,
+.recap-card small,
+.recap-card em,
+.recap-card p {
+  display: block;
+}
+
+.recap-head span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+  text-align: right;
+}
+
+.recap-values {
+  display: grid;
+  gap: 5px;
+  margin-top: 10px;
+}
+
+.recap-card small,
+.recap-card em,
+.recap-card p {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.recap-card b {
+  color: var(--ink);
+}
+
+.recap-card em {
+  margin-top: 10px;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.recap-card p {
+  margin-top: 8px;
+}
+
+.recap-details {
+  display: grid;
+  gap: 5px;
+  margin-top: 10px;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+
+.recap-details small {
+  color: var(--ink);
+  font-weight: 800;
+}
+
 .calendar-head {
   display: flex;
   align-items: center;
@@ -1474,6 +1615,7 @@ canvas {
   .chain-flow,
   .asset-grid,
   .decision-grid,
+  .recap-grid,
   .forecast-outlook,
   .market-list,
   .confirm-grid,
