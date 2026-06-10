@@ -160,6 +160,91 @@ function forexFactoryDaySlug(date = new Date()) {
   return `${month}${date.getUTCDate()}.${date.getUTCFullYear()}`;
 }
 
+function previousMonthPeriod(date = new Date()) {
+  const year = date.getUTCFullYear();
+  const monthIndex = date.getUTCMonth() - 1;
+  const previous = new Date(Date.UTC(year, monthIndex, 1));
+  return {
+    year: previous.getUTCFullYear(),
+    period: `M${String(previous.getUTCMonth() + 1).padStart(2, "0")}`
+  };
+}
+
+function percentageChange(current, previous) {
+  if (!Number.isFinite(current) || !Number.isFinite(previous) || previous === 0) return "";
+  return `${(((current - previous) / previous) * 100).toFixed(1)}%`;
+}
+
+async function fetchBlsSeries(seriesId, startYear, endYear) {
+  const response = await fetch(
+    `https://api.bls.gov/publicAPI/v2/timeseries/data/${seriesId}?startyear=${startYear}&endyear=${endYear}`
+  );
+  const payload = await response.json();
+  if (!response.ok || payload.status !== "REQUEST_SUCCEEDED") return [];
+  return payload.Results?.series?.[0]?.data || [];
+}
+
+async function getBlsCpiActuals(requestedDate = new Date()) {
+  const target = previousMonthPeriod(requestedDate);
+  const [headline, core] = await Promise.all([
+    fetchBlsSeries("CUSR0000SA0", target.year - 1, target.year),
+    fetchBlsSeries("CUSR0000SA0L1E", target.year - 1, target.year)
+  ]);
+
+  const actualsFor = (rows) => {
+    const current = rows.find((row) => row.year === String(target.year) && row.period === target.period);
+    if (!current) return { mom: "", yoy: "" };
+
+    const currentValue = Number(current.value);
+    const previousMonthDate = new Date(Date.UTC(target.year, Number(target.period.slice(1)) - 2, 1));
+    const previousMonth = rows.find((row) => (
+      row.year === String(previousMonthDate.getUTCFullYear())
+      && row.period === `M${String(previousMonthDate.getUTCMonth() + 1).padStart(2, "0")}`
+    ));
+    const previousYear = rows.find((row) => (
+      row.year === String(target.year - 1)
+      && row.period === target.period
+    ));
+
+    return {
+      mom: percentageChange(currentValue, Number(previousMonth?.value)),
+      yoy: percentageChange(currentValue, Number(previousYear?.value))
+    };
+  };
+
+  return {
+    headline: actualsFor(headline),
+    core: actualsFor(core)
+  };
+}
+
+async function enrichCpiEventsWithBls(events, requestedDate = new Date()) {
+  if (!events.some((event) => /cpi/i.test(event.title) && !event.actual)) {
+    return { events, enriched: false };
+  }
+
+  try {
+    const cpi = await getBlsCpiActuals(requestedDate);
+    let enriched = false;
+    const nextEvents = events.map((event) => {
+      if (!/cpi/i.test(event.title) || event.actual) return event;
+      const title = event.title.toLowerCase();
+      const bucket = title.includes("core") ? cpi.core : cpi.headline;
+      const actual = title.includes("y/y") ? bucket.yoy : bucket.mom;
+      if (!actual) return event;
+      enriched = true;
+      return {
+        ...event,
+        actual,
+        actualSource: "BLS"
+      };
+    });
+    return { events: nextEvents, enriched };
+  } catch {
+    return { events, enriched: false };
+  }
+}
+
 function eventIdFromCalendarTitle(title = "") {
   const lowered = title.toLowerCase();
   if (lowered.includes("cpi")) return "cpi";
@@ -424,11 +509,16 @@ async function getEconomicCalendar(requestedDate = new Date()) {
   if (events.length === 0 && CALENDAR_FALLBACKS[key]) {
     events = CALENDAR_FALLBACKS[key];
   }
+  const cpiEnrichment = await enrichCpiEventsWithBls(events, requestedDate);
+  events = cpiEnrichment.events;
+  if (cpiEnrichment.enriched) {
+    sourceStatus = sourceStatus === "live" ? "live+official" : "official";
+  }
   events = events.map((event) => ({ ...event, date: key }));
 
   return {
     date: key,
-    source: "Forex Factory",
+    source: cpiEnrichment.enriched ? "Forex Factory + BLS" : "Forex Factory",
     sourceUrl,
     sourceStatus,
     focusEventId: focusEventFromCalendar(events),
