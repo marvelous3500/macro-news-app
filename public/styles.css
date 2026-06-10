@@ -1638,6 +1638,21 @@ canvas {
     grid-column: auto;
   }
 
+  .lesson-nav {
+    position: static;
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 10px;
+    max-width: 100%;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .lesson-nav a {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
   .calendar-head,
   .calendar-item {
     display: grid;
