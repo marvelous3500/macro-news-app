@@ -360,6 +360,7 @@ async function loadMonthlyHistory(month = state.activeMonth) {
   if (!isPreviousMonth(month)) {
     state.monthlyHistory[month] = null;
     state.monthlyHistoryLoading = false;
+    setPageLoading(false);
     renderGuideSummary();
     return;
   }
@@ -383,9 +384,10 @@ async function loadMonthlyHistory(month = state.activeMonth) {
       error: error.message,
       events: {}
     };
+  } finally {
+    state.monthlyHistoryLoading = false;
+    setPageLoading(false);
   }
-  state.monthlyHistoryLoading = false;
-  setPageLoading(false);
   renderFundamentalGuide();
 }
 
@@ -1896,15 +1898,18 @@ document.querySelectorAll(".filter").forEach((button) => {
   });
 });
 
-monthPicker.addEventListener("change", () => {
+monthPicker.addEventListener("change", async () => {
   state.activeMonth = monthPicker.value || monthKey();
   state.calendar = null;
   monthRecord();
   saveFundamentalData();
   renderCalendar();
-  renderFundamentalGuide();
-  loadCalendar();
-  loadMonthlyHistory(state.activeMonth);
+  if (isPreviousMonth(state.activeMonth)) {
+    await loadMonthlyHistory(state.activeMonth);
+  } else {
+    renderFundamentalGuide();
+  }
+  await loadCalendar();
 });
 
 eventOverride.addEventListener("change", () => {
@@ -1923,8 +1928,8 @@ async function init() {
   renderFundamentalGuide();
   renderCalendar();
   renderMarketData();
-  loadCalendar();
-  loadMonthlyHistory(state.activeMonth);
+  await loadCalendar();
+  await loadMonthlyHistory(state.activeMonth);
   loadMarketData();
   loadNews();
 }
