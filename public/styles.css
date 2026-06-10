@@ -603,12 +603,40 @@ h2 {
 }
 
 .calendar-item {
+  position: relative;
   display: grid;
   grid-template-columns: 74px minmax(0, 1fr) 44px minmax(150px, auto);
   gap: 10px;
   align-items: center;
   padding: 10px 14px;
   border-bottom: 1px solid var(--line);
+}
+
+.calendar-item.high-impact {
+  border-left: 4px solid var(--red);
+  background: var(--bearish-bg);
+  padding-left: 22px;
+}
+
+.calendar-item.high-impact strong {
+  color: var(--red);
+}
+
+.calendar-item.high-impact em {
+  color: var(--red);
+  font-weight: 900;
+}
+
+.calendar-item.high-impact::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--red);
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 .calendar-item:last-child {

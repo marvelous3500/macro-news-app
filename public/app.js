@@ -1702,14 +1702,17 @@ function renderCalendar() {
     return;
   }
 
-  calendarList.innerHTML = calendar.events.map((event) => `
-    <div class="calendar-item">
+  calendarList.innerHTML = calendar.events.map((event) => {
+    const isHighImpact = event.impact === "high" || /cpi|ppi|pmi|non-farm|nonfarm|nfp|fomc|rate/i.test(event.title || "");
+    return `
+    <div class="calendar-item ${isHighImpact ? "high-impact" : ""}">
       <span>${event.time || "Tentative"}</span>
       <strong>${event.title}</strong>
       <em>${event.currency}</em>
       <small>Forecast ${event.forecast || "-"} | Previous ${event.previous || "-"}</small>
     </div>
-  `).join("");
+  `;
+  }).join("");
 }
 
 function renderMarketData() {
