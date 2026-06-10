@@ -1,3 +1,5 @@
+const APP_TIME_ZONE = "Africa/Lagos";
+
 const ECON_EVENTS = [
   {
     id: "pmi",
@@ -137,8 +139,24 @@ function themeColor(name) {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
 
+function nigeriaDateParts(date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: APP_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).formatToParts(date);
+  return Object.fromEntries(parts.map((part) => [part.type, part.value]));
+}
+
+function nigeriaDateKey(date = new Date()) {
+  const parts = nigeriaDateParts(date);
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}
+
 function monthKey(date = new Date()) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+  const parts = nigeriaDateParts(date);
+  return `${parts.year}-${parts.month}`;
 }
 
 function isPreviousMonth(month = state.activeMonth) {
@@ -417,8 +435,9 @@ function hasActual(eventId) {
 }
 
 function dateBasedStage(date = new Date()) {
-  const day = date.getDate();
-  const weekday = date.getDay();
+  const parts = nigeriaDateParts(date);
+  const day = Number(parts.day);
+  const weekday = new Date(`${parts.year}-${parts.month}-${parts.day}T12:00:00Z`).getUTCDay();
 
   if (day <= 5) return "pmi";
   if (day <= 7 && weekday >= 1 && weekday <= 5) return "nfp";
@@ -1734,8 +1753,12 @@ function renderCalendar() {
     return;
   }
 
-  const status = calendar.sourceStatus === "live" ? "Live Forex Factory" : "Forex Factory fallback";
-  calendarStatus.textContent = `${status} | ${calendar.date}`;
+  const status = calendar.sourceStatus === "live"
+    ? "Live Forex Factory"
+    : calendar.sourceStatus === "official"
+      ? "Forex Factory + official actuals"
+      : "Forex Factory fallback";
+  calendarStatus.textContent = `${status} | ${calendar.date} | Nigeria time`;
 
   if (!calendar.events?.length) {
     calendarList.innerHTML = '<div class="empty small">No USD macro events found for today.</div>';
@@ -1749,7 +1772,7 @@ function renderCalendar() {
       <span>${event.time || "Tentative"}</span>
       <strong>${event.title}</strong>
       <em>${event.currency}</em>
-      <small>Forecast ${event.forecast || "-"} | Previous ${event.previous || "-"}</small>
+      <small>Actual ${event.actual || "-"} | Forecast ${event.forecast || "-"} | Previous ${event.previous || "-"}${event.actualSource ? ` | ${event.actualSource}` : ""}</small>
     </div>
   `;
   }).join("");
@@ -1805,7 +1828,8 @@ async function loadMarketData() {
 
 async function loadCalendar() {
   try {
-    const response = await fetch(`/api/calendar?date=${state.activeMonth}-${String(new Date().getDate()).padStart(2, "0")}`);
+    const calendarDate = state.activeMonth === monthKey() ? nigeriaDateKey() : `${state.activeMonth}-01`;
+    const response = await fetch(`/api/calendar?date=${calendarDate}`);
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || "Failed to load calendar");
     state.calendar = data;
@@ -1931,7 +1955,7 @@ async function loadNews() {
     usdScore.textContent = formatScore(data.summary?.USD_Impact);
     riskScore.textContent = Number(data.summary?.Geopolitical_Risk || 0).toFixed(1);
     itemCount.textContent = String(data.summary?.itemCount || 0);
-    updatedAt.textContent = `Updated ${new Date(data.updatedAt).toLocaleTimeString()}`;
+    updatedAt.textContent = `Updated ${new Date(data.updatedAt).toLocaleTimeString("en-NG", { timeZone: APP_TIME_ZONE })} WAT`;
     modeText.textContent = data.scoringMode === "ai_optional" ? "AI scoring enabled when API key is available" : "Keyword scoring mode";
     drawChart(data.summary || {});
     renderItems();

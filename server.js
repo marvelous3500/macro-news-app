@@ -8,6 +8,7 @@ const ROOT = new URL(".", import.meta.url).pathname;
 const PUBLIC_DIR = join(ROOT, "public");
 const DATA_DIR = join(ROOT, "data");
 const FUNDAMENTALS_FILE = join(DATA_DIR, "fundamentals.json");
+const APP_TIME_ZONE = process.env.APP_TIME_ZONE || "Africa/Lagos";
 
 const SOURCE_URLS = [
   "https://www.whitehouse.gov/news/",
@@ -18,12 +19,12 @@ const SOURCE_URLS = [
 const X_QUERY = process.env.X_QUERY || "from:realDonaldTrump (tariff OR trade OR sanctions OR deficit OR debt OR rates OR inflation OR dollar OR Iran OR Israel OR Russia OR Ukraine OR NATO OR military OR war)";
 const CALENDAR_FALLBACKS = {
   "2026-06-10": [
-    { time: "2:30pm", currency: "USD", impact: "high", title: "Core CPI m/m", forecast: "0.3%", previous: "0.4%" },
-    { time: "2:30pm", currency: "USD", impact: "high", title: "Core CPI y/y", forecast: "2.9%", previous: "2.8%" },
-    { time: "2:30pm", currency: "USD", impact: "high", title: "CPI m/m", forecast: "0.5%", previous: "0.6%" },
-    { time: "2:30pm", currency: "USD", impact: "high", title: "CPI y/y", forecast: "4.2%", previous: "3.8%" },
-    { time: "5:35pm", currency: "USD", impact: "medium", title: "Crude Oil Inventories", forecast: "-3.0M", previous: "-8.0M" },
-    { time: "8:00pm", currency: "USD", impact: "medium", title: "Federal Budget Balance", forecast: "-282.9B", previous: "215.0B" }
+    { time: "1:30pm", currency: "USD", impact: "high", title: "Core CPI m/m", forecast: "0.3%", previous: "0.4%" },
+    { time: "1:30pm", currency: "USD", impact: "high", title: "Core CPI y/y", forecast: "2.9%", previous: "2.8%" },
+    { time: "1:30pm", currency: "USD", impact: "high", title: "CPI m/m", forecast: "0.5%", previous: "0.6%" },
+    { time: "1:30pm", currency: "USD", impact: "high", title: "CPI y/y", forecast: "4.2%", previous: "3.8%" },
+    { time: "4:35pm", currency: "USD", impact: "medium", title: "Crude Oil Inventories", forecast: "-3.0M", previous: "-8.0M" },
+    { time: "7:00pm", currency: "USD", impact: "medium", title: "Federal Budget Balance", forecast: "-282.9B", previous: "215.0B" }
   ]
 };
 
@@ -151,19 +152,30 @@ function includesTerm(text, term) {
 	return new RegExp(`\\b${escapeRegex(normalized)}\\b`, "i").test(text);
 }
 
+function datePartsInAppTime(date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: APP_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).formatToParts(date);
+  return Object.fromEntries(parts.map((part) => [part.type, part.value]));
+}
+
 function todayKey(date = new Date()) {
-  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
+  const parts = datePartsInAppTime(date);
+  return `${parts.year}-${parts.month}-${parts.day}`;
 }
 
 function forexFactoryDaySlug(date = new Date()) {
-  const month = date.toLocaleString("en-US", { month: "short", timeZone: "UTC" }).toLowerCase();
-  return `${month}${date.getUTCDate()}.${date.getUTCFullYear()}`;
+  const parts = datePartsInAppTime(date);
+  const month = date.toLocaleString("en-US", { month: "short", timeZone: APP_TIME_ZONE }).toLowerCase();
+  return `${month}${Number(parts.day)}.${parts.year}`;
 }
 
 function previousMonthPeriod(date = new Date()) {
-  const year = date.getUTCFullYear();
-  const monthIndex = date.getUTCMonth() - 1;
-  const previous = new Date(Date.UTC(year, monthIndex, 1));
+  const parts = datePartsInAppTime(date);
+  const previous = new Date(Date.UTC(Number(parts.year), Number(parts.month) - 2, 1));
   return {
     year: previous.getUTCFullYear(),
     period: `M${String(previous.getUTCMonth() + 1).padStart(2, "0")}`
@@ -748,7 +760,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname === "/api/calendar") {
       const dateParam = url.searchParams.get("date");
-      const requestedDate = dateParam ? new Date(`${dateParam}T00:00:00Z`) : new Date();
+      const requestedDate = dateParam ? new Date(`${dateParam}T12:00:00Z`) : new Date();
       json(res, 200, await getEconomicCalendar(requestedDate));
       return;
     }
