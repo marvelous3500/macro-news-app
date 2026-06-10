@@ -60,6 +60,7 @@ const state = {
   calendar: null,
   marketData: null,
   monthlyHistory: {},
+  monthlyHistoryLoading: false,
   data: loadStoredFundamentalData()
 };
 
@@ -348,11 +349,13 @@ function mergeMonthlyHistory(month, history) {
 async function loadMonthlyHistory(month = state.activeMonth) {
   if (!isPreviousMonth(month)) {
     state.monthlyHistory[month] = null;
+    state.monthlyHistoryLoading = false;
     renderGuideSummary();
     return;
   }
 
-  monthlyRecapStatus.textContent = `Loading Forex Factory history for ${month}...`;
+  state.monthlyHistoryLoading = true;
+  renderMonthlyRecap();
   try {
     const response = await fetch(`/api/monthly-history?month=${encodeURIComponent(month)}`);
     const history = await response.json();
@@ -366,6 +369,7 @@ async function loadMonthlyHistory(month = state.activeMonth) {
       events: {}
     };
   }
+  state.monthlyHistoryLoading = false;
   renderFundamentalGuide();
 }
 
@@ -882,6 +886,20 @@ function buildMonthlyOutcomeSummary() {
 function renderMonthlyRecap() {
   const selectedIsPast = isPreviousMonth();
   const history = state.monthlyHistory[state.activeMonth];
+  if (selectedIsPast && state.monthlyHistoryLoading) {
+    monthlyRecapStatus.textContent = `Fetching Forex Factory data for ${state.activeMonth}...`;
+    monthlyRecap.innerHTML = `
+      <article class="monthly-loading">
+        <span></span>
+        <div>
+          <strong>Loading monthly macro history</strong>
+          <p>Fetching PMI, NFP, PPI and CPI from Forex Factory. This can take a few seconds because the app scans the month.</p>
+        </div>
+      </article>
+    `;
+    return;
+  }
+
   monthlyRecapStatus.textContent = selectedIsPast
     ? history?.sourceStatus === "live"
       ? `${state.activeMonth} completed-month review | Forex Factory loaded`

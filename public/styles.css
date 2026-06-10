@@ -44,6 +44,12 @@
   --blue: #78a6ff;
 }
 
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 * {
   box-sizing: border-box;
 }
@@ -307,6 +313,38 @@ h2 {
 
 .monthly-outcome span + span {
   margin-top: 5px;
+}
+
+.monthly-loading {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--control);
+  padding: 14px;
+}
+
+.monthly-loading > span {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  border: 3px solid var(--line);
+  border-top-color: var(--accent);
+  border-radius: 999px;
+  animation: spin 0.9s linear infinite;
+}
+
+.monthly-loading strong,
+.monthly-loading p {
+  display: block;
+}
+
+.monthly-loading p {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
 }
 
 .recap-grid {
