@@ -376,6 +376,9 @@ async function loadMonthlyHistory(month = state.activeMonth) {
     const response = await fetch(`/api/monthly-history?month=${encodeURIComponent(month)}`);
     const history = await response.json();
     if (!response.ok) throw new Error(history.error || "Failed to load monthly history");
+    if (!history.events || Object.keys(history.events).length === 0) {
+      throw new Error("Forex Factory did not return PMI, NFP, PPI or CPI for this month.");
+    }
     state.monthlyHistory[month] = history;
     mergeMonthlyHistory(month, history);
   } catch (error) {
@@ -384,9 +387,17 @@ async function loadMonthlyHistory(month = state.activeMonth) {
       error: error.message,
       events: {}
     };
+    setPageLoading(
+      true,
+      "Monthly data not loaded",
+      `${error.message} Please retry the month or enter the values manually.`
+    );
+    setTimeout(() => setPageLoading(false), 4500);
   } finally {
     state.monthlyHistoryLoading = false;
-    setPageLoading(false);
+    if (state.monthlyHistory[month]?.sourceStatus !== "unavailable") {
+      setPageLoading(false);
+    }
   }
   renderFundamentalGuide();
 }

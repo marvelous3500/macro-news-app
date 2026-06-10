@@ -27,6 +27,8 @@ const CALENDAR_FALLBACKS = {
   ]
 };
 
+const MONTHLY_HISTORY_CACHE = new Map();
+
 const MARKET_SYMBOLS = [
   { id: "dxy", label: "DXY", yahoo: "DX-Y.NYB" },
   { id: "us10y", label: "US10Y", yahoo: "^TNX", scale: 0.1 },
@@ -437,6 +439,10 @@ async function getMonthlyMacroHistory(month) {
   if (!/^\d{4}-\d{2}$/.test(month || "")) {
     throw new Error("month must be in YYYY-MM format");
   }
+  const cached = MONTHLY_HISTORY_CACHE.get(month);
+  if (cached && Date.now() - cached.cachedAt < 12 * 60 * 60 * 1000) {
+    return { ...cached.payload, cached: true };
+  }
 
   const [year, monthNumber] = month.split("-").map(Number);
   const daysInMonth = new Date(Date.UTC(year, monthNumber, 0)).getUTCDate();
@@ -444,33 +450,39 @@ async function getMonthlyMacroHistory(month) {
   const sourceDays = [];
   let liveDays = 0;
 
-  for (let day = 1; day <= daysInMonth; day += 1) {
-    const date = new Date(Date.UTC(year, monthNumber - 1, day));
-    const calendar = await getEconomicCalendar(date);
-    sourceDays.push({
-      date: calendar.date,
-      status: calendar.sourceStatus,
-      count: calendar.events.length
-    });
-    if (calendar.sourceStatus === "live") liveDays += 1;
+  const dates = Array.from({ length: daysInMonth }, (_, index) => new Date(Date.UTC(year, monthNumber - 1, index + 1)));
+  const batchSize = 6;
 
-    for (const event of calendar.events) {
-      const id = monthlyEventIdFromTitle(event.title);
-      if (!id) continue;
-      const candidate = {
-        title: event.title,
+  for (let index = 0; index < dates.length; index += batchSize) {
+    const batch = dates.slice(index, index + batchSize);
+    const calendars = await Promise.all(batch.map((date) => getEconomicCalendar(date)));
+
+    for (const calendar of calendars) {
+      sourceDays.push({
         date: calendar.date,
-        time: event.time,
-        actual: normalizeMacroValue(event.actual),
-        forecast: normalizeMacroValue(event.forecast),
-        previous: normalizeMacroValue(event.previous),
-        source: calendar.source,
-        sourceUrl: calendar.sourceUrl,
-        priority: eventPriority(event.title)
-      };
-      if (!candidate.actual && !candidate.forecast && !candidate.previous) continue;
-      if (!selected[id] || candidate.priority < selected[id].priority) {
-        selected[id] = candidate;
+        status: calendar.sourceStatus,
+        count: calendar.events.length
+      });
+      if (calendar.sourceStatus === "live") liveDays += 1;
+
+      for (const event of calendar.events) {
+        const id = monthlyEventIdFromTitle(event.title);
+        if (!id) continue;
+        const candidate = {
+          title: event.title,
+          date: calendar.date,
+          time: event.time,
+          actual: normalizeMacroValue(event.actual),
+          forecast: normalizeMacroValue(event.forecast),
+          previous: normalizeMacroValue(event.previous),
+          source: calendar.source,
+          sourceUrl: calendar.sourceUrl,
+          priority: eventPriority(event.title)
+        };
+        if (!candidate.actual && !candidate.forecast && !candidate.previous) continue;
+        if (!selected[id] || candidate.priority < selected[id].priority) {
+          selected[id] = candidate;
+        }
       }
     }
   }
@@ -488,15 +500,17 @@ async function getMonthlyMacroHistory(month) {
     };
   }
 
-  return {
+  const payload = {
     month,
     source: "Forex Factory",
-    sourceStatus: liveDays > 0 ? "live" : "unavailable",
+    sourceStatus: liveDays > 0 && Object.keys(events).length > 0 ? "live" : "unavailable",
     liveDays,
     daysScanned: daysInMonth,
     events,
     sourceDays
   };
+  MONTHLY_HISTORY_CACHE.set(month, { cachedAt: Date.now(), payload });
+  return payload;
 }
 
 async function getNews() {
