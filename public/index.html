@@ -64,6 +64,14 @@
           <div id="calendarList" class="calendar-list"></div>
         </div>
 
+        <div class="calendar-panel market-panel" id="marketPanel">
+          <div class="calendar-head">
+            <strong>Live Market Confirmation</strong>
+            <span id="marketStatus">Loading market data...</span>
+          </div>
+          <div id="marketList" class="market-list"></div>
+        </div>
+
         <section class="macro-engine" aria-label="Macro chain engine">
           <div class="macro-head">
             <div>
@@ -92,6 +100,14 @@
             <article class="decision-panel">
               <h3>Trade Bias Scores</h3>
               <div id="tradeBiasScores" class="score-list"></div>
+            </article>
+
+            <article class="decision-panel wide">
+              <div class="panel-title">
+                <h3>Forecast Outlook</h3>
+                <span>Intraday macro view</span>
+              </div>
+              <div id="forecastOutlook" class="forecast-outlook"></div>
             </article>
 
             <article class="decision-panel hidden-panel" hidden>

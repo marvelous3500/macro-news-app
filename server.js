@@ -27,6 +27,17 @@ const CALENDAR_FALLBACKS = {
   ]
 };
 
+const MARKET_SYMBOLS = [
+  { id: "dxy", label: "DXY", yahoo: "DX-Y.NYB" },
+  { id: "us10y", label: "US10Y", yahoo: "^TNX", scale: 0.1 },
+  { id: "gold", label: "XAU/USD", yahoo: "GC=F" },
+  { id: "eurusd", label: "EUR/USD", yahoo: "EURUSD=X" },
+  { id: "gbpusd", label: "GBP/USD", yahoo: "GBPUSD=X" },
+  { id: "usdjpy", label: "USD/JPY", yahoo: "JPY=X" },
+  { id: "nas100", label: "NAS100", yahoo: "NQ=F" },
+  { id: "btc", label: "BTC/USD", yahoo: "BTC-USD" }
+];
+
 const MACRO_KEYWORDS = [
   "tariff", "trade", "sanction", "deficit", "debt", "rate", "inflation",
   "dollar", "treasury", "tax", "budget", "china", "middle east", "iran",
@@ -439,6 +450,65 @@ async function getNews() {
   };
 }
 
+async function fetchYahooQuote(symbol) {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol.yahoo)}?range=1d&interval=5m`;
+  const response = await fetch(url, {
+    headers: {
+      "user-agent": "MacroNewsApp/1.0"
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(`market data failed for ${symbol.label}: ${response.status}`);
+  }
+
+  const payload = await response.json();
+  const result = payload.chart?.result?.[0];
+  const meta = result?.meta || {};
+  const closes = result?.indicators?.quote?.[0]?.close || [];
+  const validCloses = closes.filter((value) => Number.isFinite(Number(value))).map(Number);
+  const currentRaw = Number(meta.regularMarketPrice || validCloses.at(-1) || 0);
+  const previousRaw = Number(meta.previousClose || meta.chartPreviousClose || validCloses[0] || currentRaw);
+  const current = Number((currentRaw * (symbol.scale || 1)).toFixed(symbol.id === "us10y" ? 3 : 5));
+  const previous = Number((previousRaw * (symbol.scale || 1)).toFixed(symbol.id === "us10y" ? 3 : 5));
+  const change = Number((current - previous).toFixed(symbol.id === "us10y" ? 3 : 5));
+  const changePercent = previous ? Number(((change / previous) * 100).toFixed(2)) : 0;
+
+  return {
+    id: symbol.id,
+    label: symbol.label,
+    sourceSymbol: symbol.yahoo,
+    price: current,
+    previous,
+    change,
+    changePercent,
+    direction: changePercent > 0.05 ? "up" : changePercent < -0.05 ? "down" : "flat",
+    updatedAt: new Date().toISOString()
+  };
+}
+
+async function getMarketData() {
+  const results = await Promise.allSettled(MARKET_SYMBOLS.map(fetchYahooQuote));
+  const quotes = {};
+  const errors = [];
+
+  results.forEach((result, index) => {
+    const symbol = MARKET_SYMBOLS[index];
+    if (result.status === "fulfilled") {
+      quotes[symbol.id] = result.value;
+    } else {
+      errors.push({ id: symbol.id, label: symbol.label, message: result.reason?.message || "failed" });
+    }
+  });
+
+  return {
+    updatedAt: new Date().toISOString(),
+    source: "Yahoo Finance",
+    quotes,
+    errors
+  };
+}
+
 async function serveStatic(req, res) {
   const url = new URL(req.url, `http://localhost:${PORT}`);
   const requestedPath = url.pathname === "/" ? "/index.html" : url.pathname === "/learn" ? "/learn.html" : url.pathname;
@@ -474,6 +544,10 @@ const server = http.createServer(async (req, res) => {
       const dateParam = url.searchParams.get("date");
       const requestedDate = dateParam ? new Date(`${dateParam}T00:00:00Z`) : new Date();
       json(res, 200, await getEconomicCalendar(requestedDate));
+      return;
+    }
+    if (url.pathname === "/api/market-data") {
+      json(res, 200, await getMarketData());
       return;
     }
     if (url.pathname === "/api/fundamentals" && req.method === "GET") {

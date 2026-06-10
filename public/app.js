@@ -58,6 +58,7 @@ const state = {
   history: [],
   activeMonth: monthKey(),
   calendar: null,
+  marketData: null,
   data: loadStoredFundamentalData()
 };
 
@@ -85,6 +86,7 @@ const manualControls = document.querySelector("#manualControls");
 const confidenceBadge = document.querySelector("#confidenceBadge");
 const dailyPlaybook = document.querySelector("#dailyPlaybook");
 const tradeBiasScores = document.querySelector("#tradeBiasScores");
+const forecastOutlook = document.querySelector("#forecastOutlook");
 const scenarioBuilder = document.querySelector("#scenarioBuilder");
 const postNewsTracker = document.querySelector("#postNewsTracker");
 const marketConfirmation = document.querySelector("#marketConfirmation");
@@ -103,6 +105,8 @@ const monthPicker = document.querySelector("#monthPicker");
 const eventOverride = document.querySelector("#eventOverride");
 const calendarStatus = document.querySelector("#calendarStatus");
 const calendarList = document.querySelector("#calendarList");
+const marketStatus = document.querySelector("#marketStatus");
+const marketList = document.querySelector("#marketList");
 const canvas = document.querySelector("#signalCanvas");
 const ctx = canvas.getContext("2d");
 
@@ -631,6 +635,134 @@ function formatSigned(value) {
   return number > 0 ? `+${number.toFixed(1)}` : number.toFixed(1);
 }
 
+function outlookDirection(score) {
+  if (score >= 2) return { label: "Intraday up", icon: "↑", tone: "bullish" };
+  if (score <= -2) return { label: "Intraday down", icon: "↓", tone: "bearish" };
+  return { label: "Mixed / wait", icon: "→", tone: "mixed" };
+}
+
+function quoteDirection(id) {
+  return state.marketData?.quotes?.[id]?.direction || "unknown";
+}
+
+function quoteSummary(id) {
+  const quote = state.marketData?.quotes?.[id];
+  if (!quote) return "live data unavailable";
+  const sign = quote.changePercent > 0 ? "+" : "";
+  return `${quote.price} (${sign}${quote.changePercent}%)`;
+}
+
+function expectedDirectionFromScore(score) {
+  if (score >= 2) return "up";
+  if (score <= -2) return "down";
+  return "flat";
+}
+
+function confirmationStatus(macro, item) {
+  if (!state.marketData?.quotes) {
+    return { label: "Waiting for live data", tone: "mixed" };
+  }
+
+  const expected = expectedDirectionFromScore(item.score);
+  const live = quoteDirection(item.marketId);
+  const dxyOk = macro.directions.usd === "flat" || quoteDirection("dxy") === macro.directions.usd;
+  const yieldsOk = macro.directions.yields === "flat" || quoteDirection("us10y") === macro.directions.yields;
+  const assetOk = expected === "flat" || live === expected;
+
+  if (expected === "flat") {
+    return { label: dxyOk && yieldsOk ? "Neutral, waiting for trigger" : "Macro confirmation mixed", tone: "mixed" };
+  }
+  if (assetOk && dxyOk && yieldsOk) {
+    return { label: "Live market confirms bias", tone: "bullish" };
+  }
+  if (!assetOk && live !== "unknown" && live !== "flat") {
+    return { label: "Live price is fighting the bias", tone: "bearish" };
+  }
+  return { label: "Wait for DXY/US10Y confirmation", tone: "mixed" };
+}
+
+function buildForecastOutlook(macro, nextEventId) {
+  const nextName = ECON_EVENTS.find((event) => event.id === nextEventId)?.name || "next data";
+  const usdForce = macro.directions.usd === "up" ? 3 : macro.directions.usd === "down" ? -3 : 0;
+  const yieldForce = macro.directions.yields === "up" ? 2 : macro.directions.yields === "down" ? -2 : 0;
+  const riskForce = macro.directions.risk === "on" ? 2 : macro.directions.risk === "off" ? -2 : 0;
+  const jpySafeHaven = macro.assetScores.jpy || 0;
+
+  return [
+    {
+      symbol: "XAU/USD",
+      marketId: "gold",
+      title: "Gold forecast has changed",
+      score: macro.assetScores.gold,
+      reason: yieldForce > 0 || usdForce > 0
+        ? "Higher yields or stronger USD are pressuring Gold."
+        : yieldForce < 0 || usdForce < 0
+          ? "Lower yields or weaker USD are supporting Gold."
+          : "Gold needs DXY and US10Y confirmation."
+    },
+    {
+      symbol: "EUR/USD",
+      marketId: "eurusd",
+      title: "EURUSD forecast has changed",
+      score: -usdForce + riskForce * 0.35,
+      reason: usdForce > 0
+        ? "Stronger USD keeps EUR/USD under pressure."
+        : usdForce < 0
+          ? "Weaker USD gives EUR/USD upside room."
+          : "EUR/USD is waiting for a clearer dollar signal."
+    },
+    {
+      symbol: "GBP/USD",
+      marketId: "gbpusd",
+      title: "GBPUSD forecast has changed",
+      score: -usdForce + riskForce * 0.45,
+      reason: usdForce > 0
+        ? "Dollar strength and tighter Fed pricing pressure GBP/USD."
+        : usdForce < 0
+          ? "Softer USD and lower yields can support GBP/USD."
+          : "GBP/USD needs DXY confirmation after the next release."
+    },
+    {
+      symbol: "USD/JPY",
+      marketId: "usdjpy",
+      title: "USDJPY forecast has changed",
+      score: usdForce + yieldForce - jpySafeHaven * 0.45,
+      reason: macro.directions.risk === "off"
+        ? "Risk-off can support JPY, so USD/JPY needs extra confirmation."
+        : yieldForce > 0 || usdForce > 0
+          ? "Higher US yields or stronger USD support USD/JPY."
+          : "Lower yields can pressure USD/JPY."
+    },
+    {
+      symbol: "NAS100",
+      marketId: "nas100",
+      title: "NAS100 forecast has changed",
+      score: macro.assetScores.nas100,
+      reason: yieldForce > 0
+        ? "Higher yields raise valuation pressure on tech."
+        : yieldForce < 0
+          ? "Lower yields can relieve pressure on tech."
+          : "NAS100 needs yield and risk-sentiment confirmation."
+    },
+    {
+      symbol: "BTC/USD",
+      marketId: "btc",
+      title: "BTCUSD forecast has changed",
+      score: macro.assetScores.btc,
+      reason: riskForce > 0 && usdForce <= 0
+        ? "Risk-on mood and softer USD support BTC."
+        : riskForce < 0 || usdForce > 0
+          ? "Risk-off mood or stronger USD pressures BTC."
+          : "BTC needs risk sentiment and USD confirmation."
+    }
+  ].map((item) => ({
+    ...item,
+    nextName,
+    direction: outlookDirection(item.score),
+    confirmation: confirmationStatus(macro, item)
+  }));
+}
+
 function scenarioOutcomeText(scenario) {
   const actual = Number(scenario.actual);
   const forecast = Number(scenario.forecast);
@@ -687,12 +819,34 @@ function renderDecisionPanels(macro, nextEventId) {
     `;
   }).join("");
 
+  renderForecastOutlook(macro, nextEventId);
   renderScenarioBuilder();
   renderPostNewsTracker();
   renderMarketConfirmation(macro);
   renderMacroMemory(macro);
   renderAlertPanel(macro, nextEventId);
   renderLearningCenter(macro, nextEventId);
+}
+
+function renderForecastOutlook(macro, nextEventId) {
+  const outlook = buildForecastOutlook(macro, nextEventId);
+  forecastOutlook.innerHTML = outlook.map((item) => `
+    <article class="forecast-card ${item.confirmation.tone}">
+      <div class="forecast-main">
+        <span class="forecast-bell">!</span>
+        <div>
+          <strong>${item.symbol}</strong>
+          <p>${item.title}</p>
+        </div>
+      </div>
+      <div class="forecast-direction">
+        <span>${item.direction.label}</span>
+        <strong>${item.direction.icon}</strong>
+      </div>
+      <p class="forecast-reason">${item.reason}</p>
+      <small>${item.confirmation.label}. Live: ${quoteSummary(item.marketId)}. Watch ${item.nextName}, DXY and US10Y before entry.</small>
+    </article>
+  `).join("");
 }
 
 function renderScenarioBuilder() {
@@ -1137,6 +1291,54 @@ function renderCalendar() {
   `).join("");
 }
 
+function renderMarketData() {
+  if (!state.marketData) {
+    marketStatus.textContent = "Loading market data...";
+    marketList.innerHTML = "";
+    return;
+  }
+
+  const quotes = state.marketData.quotes || {};
+  const quoteItems = ["dxy", "us10y", "gold", "eurusd", "gbpusd", "usdjpy", "nas100", "btc"]
+    .map((id) => quotes[id])
+    .filter(Boolean);
+
+  marketStatus.textContent = state.marketData.errors?.length
+    ? `Partial live data from ${state.marketData.source}`
+    : `Live data from ${state.marketData.source}`;
+
+  marketList.innerHTML = quoteItems.length
+    ? quoteItems.map((quote) => {
+      const tone = quote.direction === "up" ? "bullish" : quote.direction === "down" ? "bearish" : "mixed";
+      const sign = quote.changePercent > 0 ? "+" : "";
+      return `
+        <div class="market-pill ${tone}">
+          <strong>${quote.label}</strong>
+          <span>${quote.price}</span>
+          <em>${sign}${quote.changePercent}%</em>
+        </div>
+      `;
+    }).join("")
+    : '<div class="empty small">Live data unavailable right now.</div>';
+}
+
+async function loadMarketData() {
+  try {
+    const response = await fetch("/api/market-data");
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "market data failed");
+    state.marketData = data;
+  } catch (error) {
+    state.marketData = {
+      source: "Unavailable",
+      quotes: {},
+      errors: [{ message: error.message }]
+    };
+  }
+  renderMarketData();
+  renderGuideSummary();
+}
+
 async function loadCalendar() {
   try {
     const response = await fetch(`/api/calendar?date=${state.activeMonth}-${String(new Date().getDate()).padStart(2, "0")}`);
@@ -1305,14 +1507,18 @@ eventOverride.addEventListener("change", () => {
 lightThemeBtn.addEventListener("click", () => applyTheme("light"));
 darkThemeBtn.addEventListener("click", () => applyTheme("dark"));
 refreshBtn.addEventListener("click", loadNews);
+refreshBtn.addEventListener("click", loadMarketData);
 async function init() {
   applyTheme(localStorage.getItem("macro-theme") || "light");
   await loadSharedFundamentalData();
   renderFundamentalGuide();
   renderCalendar();
+  renderMarketData();
   loadCalendar();
+  loadMarketData();
   loadNews();
 }
 
 init();
 setInterval(loadNews, 5 * 60 * 1000);
+setInterval(loadMarketData, 60 * 1000);

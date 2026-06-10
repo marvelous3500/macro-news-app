@@ -282,6 +282,58 @@ h2 {
   display: grid;
 }
 
+.market-list {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  padding: 10px;
+}
+
+.market-pill {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--control);
+  padding: 9px;
+}
+
+.market-pill.bullish {
+  border-color: var(--bullish-line);
+  background: var(--bullish-bg);
+}
+
+.market-pill.bearish {
+  border-color: var(--bearish-line);
+  background: var(--bearish-bg);
+}
+
+.market-pill.mixed {
+  border-color: var(--warning-line);
+  background: var(--warning-bg);
+}
+
+.market-pill strong,
+.market-pill span,
+.market-pill em {
+  display: block;
+}
+
+.market-pill strong {
+  font-size: 12px;
+}
+
+.market-pill span {
+  margin-top: 5px;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.market-pill em {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 11px;
+  font-style: normal;
+}
+
 .calendar-item {
   display: grid;
   grid-template-columns: 74px minmax(0, 1fr) 44px minmax(150px, auto);
@@ -485,6 +537,7 @@ h2 {
 
 .playbook-list,
 .score-list,
+.forecast-outlook,
 .scenario-builder,
 .post-news,
 .macro-memory,
@@ -524,6 +577,100 @@ h2 {
 
 .score-row strong {
   font-size: 13px;
+}
+
+.forecast-outlook {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.forecast-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  padding: 10px;
+}
+
+.forecast-card.bullish {
+  border-color: var(--bullish-line);
+  background: var(--bullish-bg);
+}
+
+.forecast-card.bearish {
+  border-color: var(--bearish-line);
+  background: var(--bearish-bg);
+}
+
+.forecast-card.mixed {
+  border-color: var(--warning-line);
+  background: var(--warning-bg);
+}
+
+.forecast-main,
+.forecast-direction {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.forecast-main {
+  align-items: flex-start;
+}
+
+.forecast-main > div {
+  min-width: 0;
+  flex: 1;
+}
+
+.forecast-bell {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.forecast-card strong,
+.forecast-card p,
+.forecast-card small {
+  display: block;
+}
+
+.forecast-card p {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.forecast-direction {
+  margin-top: 10px;
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+}
+
+.forecast-direction span {
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.forecast-direction strong {
+  font-size: 20px;
+}
+
+.forecast-reason {
+  min-height: 32px;
+}
+
+.forecast-card small {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
 }
 
 .scenario-builder label,
@@ -1327,6 +1474,8 @@ canvas {
   .chain-flow,
   .asset-grid,
   .decision-grid,
+  .forecast-outlook,
+  .market-list,
   .confirm-grid,
   .learning-grid,
   .cause-effect,
@@ -1337,6 +1486,7 @@ canvas {
   .lesson-steps.two,
   .advanced-grid,
   .tutorial-grid,
+  .driver-grid,
   .framework-grid,
   .foundation-terms {
     grid-template-columns: 1fr;
