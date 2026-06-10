@@ -4,7 +4,7 @@ Macro News App is a fundamental trading tool created for macroeconomic data anal
 
 Live app: https://macro-news-app-twmt.onrender.com/
 
-The app helps traders study macroeconomic data, track PMI, NFP, PPI and CPI, review Forex Factory monthly history, monitor DXY and US10Y confirmation, and build a market outlook for Gold, NAS100, BTC and major USD pairs.
+The app helps traders study macroeconomic data, track PMI, NFP, PPI and CPI, review Forex Factory monthly history, monitor DXY and US10Y confirmation, and build a market outlook for Gold, BTC and major USD pairs.
 
 ## Pages
 
