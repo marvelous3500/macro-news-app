@@ -615,40 +615,54 @@ function predictCpiOutcome() {
   const ppiValue = latestValue("ppi");
   const ppiForecast = Number(eventData("ppi").forecast || 0);
   let score = 0;
+  let availableWeight = 0;
   const reasons = [];
 
   if (pmiState === "beat") {
     score += 1;
+    availableWeight += 1;
     reasons.push("PMI beat forecast, so business activity is stronger.");
   }
   if (pmiState === "miss") {
     score -= 1;
+    availableWeight += 1;
     reasons.push("PMI missed forecast, so growth pressure is softer.");
   }
   if (nfpState === "beat") {
     score += 1;
+    availableWeight += 1;
     reasons.push("NFP beat forecast, so labor demand is strong.");
   }
   if (nfpState === "miss") {
     score -= 1;
+    availableWeight += 1;
     reasons.push("NFP missed forecast, so demand may be cooling.");
   }
   if (ppiState === "beat" || (hasActual("ppi") && ppiValue > ppiForecast)) {
     score += 2;
+    availableWeight += 2;
     reasons.push("PPI was hot, so producer costs can feed into CPI.");
   }
   if (ppiState === "miss") {
     score -= 2;
+    availableWeight += 2;
     reasons.push("PPI cooled, so CPI pressure may soften.");
   }
+
+  const confidence = availableWeight === 0
+    ? 0
+    : Math.min(90, Math.max(40, Math.round((Math.abs(score) / availableWeight) * 100)));
+  const confidenceText = confidence ? `${confidence}% confidence` : "0% confidence";
 
   if (score >= 2) {
     return {
       bias: "higher",
-      label: "Higher CPI expected",
+      label: `Higher CPI expected (${confidenceText})`,
       tone: "bullish",
-      summary: "Prediction before CPI: PMI/NFP/PPI lean toward a hotter CPI print. If CPI confirms hot, expect stronger USD, higher yields, Gold pressure and NAS100 pressure.",
+      confidence,
+      summary: `Prediction before CPI: PMI/NFP/PPI lean toward a hotter CPI print with ${confidenceText}. If CPI confirms hot, expect stronger USD, higher yields, Gold pressure and NAS100 pressure.`,
       details: [
+        `Prediction confidence: ${confidenceText}`,
         "Expected USD outcome: stronger dollar bias",
         "Expected yields: higher if CPI confirms hot",
         "Expected Gold/NAS100: bearish pressure",
@@ -659,10 +673,12 @@ function predictCpiOutcome() {
   if (score <= -2) {
     return {
       bias: "lower",
-      label: "Softer CPI possible",
+      label: `Softer CPI possible (${confidenceText})`,
       tone: "bearish",
-      summary: "Prediction before CPI: prior data leans cooler. If CPI confirms soft, expect weaker USD, lower yields, Gold relief and NAS100 relief.",
+      confidence,
+      summary: `Prediction before CPI: prior data leans cooler with ${confidenceText}. If CPI confirms soft, expect weaker USD, lower yields, Gold relief and NAS100 relief.`,
       details: [
+        `Prediction confidence: ${confidenceText}`,
         "Expected USD outcome: weaker dollar bias",
         "Expected yields: lower if CPI confirms soft",
         "Expected Gold/NAS100: bullish relief",
@@ -673,10 +689,12 @@ function predictCpiOutcome() {
 
   return {
     bias: "mixed",
-    label: "CPI prediction mixed",
+    label: `CPI prediction mixed (${confidenceText})`,
     tone: "mixed",
-    summary: "Prediction before CPI: PMI/NFP/PPI are mixed or incomplete. Wait for actual CPI plus DXY and US10Y confirmation.",
+    confidence,
+    summary: `Prediction before CPI: PMI/NFP/PPI are mixed or incomplete, so confidence is ${confidenceText}. Wait for actual CPI plus DXY and US10Y confirmation.`,
     details: [
+      `Prediction confidence: ${confidenceText}`,
       "Expected USD outcome: mixed until CPI lands",
       "Expected yields: mixed until CPI lands",
       "Expected Gold/NAS100: wait for CPI reaction",
