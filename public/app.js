@@ -608,8 +608,86 @@ function eventSurpriseState(eventId) {
   };
 }
 
+function predictCpiOutcome() {
+  const pmiState = eventSurpriseState("pmi").state;
+  const nfpState = eventSurpriseState("nfp").state;
+  const ppiState = eventSurpriseState("ppi").state;
+  const ppiValue = latestValue("ppi");
+  const ppiForecast = Number(eventData("ppi").forecast || 0);
+  let score = 0;
+  const reasons = [];
+
+  if (pmiState === "beat") {
+    score += 1;
+    reasons.push("PMI beat forecast, so business activity is stronger.");
+  }
+  if (pmiState === "miss") {
+    score -= 1;
+    reasons.push("PMI missed forecast, so growth pressure is softer.");
+  }
+  if (nfpState === "beat") {
+    score += 1;
+    reasons.push("NFP beat forecast, so labor demand is strong.");
+  }
+  if (nfpState === "miss") {
+    score -= 1;
+    reasons.push("NFP missed forecast, so demand may be cooling.");
+  }
+  if (ppiState === "beat" || (hasActual("ppi") && ppiValue > ppiForecast)) {
+    score += 2;
+    reasons.push("PPI was hot, so producer costs can feed into CPI.");
+  }
+  if (ppiState === "miss") {
+    score -= 2;
+    reasons.push("PPI cooled, so CPI pressure may soften.");
+  }
+
+  if (score >= 2) {
+    return {
+      bias: "higher",
+      label: "Higher CPI expected",
+      tone: "bullish",
+      summary: "Prediction before CPI: PMI/NFP/PPI lean toward a hotter CPI print. If CPI confirms hot, expect stronger USD, higher yields, Gold pressure and NAS100 pressure.",
+      details: [
+        "Expected USD outcome: stronger dollar bias",
+        "Expected yields: higher if CPI confirms hot",
+        "Expected Gold/NAS100: bearish pressure",
+        ...reasons.slice(0, 3)
+      ]
+    };
+  }
+  if (score <= -2) {
+    return {
+      bias: "lower",
+      label: "Softer CPI possible",
+      tone: "bearish",
+      summary: "Prediction before CPI: prior data leans cooler. If CPI confirms soft, expect weaker USD, lower yields, Gold relief and NAS100 relief.",
+      details: [
+        "Expected USD outcome: weaker dollar bias",
+        "Expected yields: lower if CPI confirms soft",
+        "Expected Gold/NAS100: bullish relief",
+        ...reasons.slice(0, 3)
+      ]
+    };
+  }
+
+  return {
+    bias: "mixed",
+    label: "CPI prediction mixed",
+    tone: "mixed",
+    summary: "Prediction before CPI: PMI/NFP/PPI are mixed or incomplete. Wait for actual CPI plus DXY and US10Y confirmation.",
+    details: [
+      "Expected USD outcome: mixed until CPI lands",
+      "Expected yields: mixed until CPI lands",
+      "Expected Gold/NAS100: wait for CPI reaction",
+      ...reasons.slice(0, 3)
+    ]
+  };
+}
+
 function outcomeForEvent(eventId, stateLabel) {
   if (stateLabel === "missing") {
+    if (eventId === "cpi") return predictCpiOutcome().summary;
     return "No outcome yet. Add the actual value to know whether this release supported a strong dollar, weak dollar, higher yields, or lower yields.";
   }
   if (stateLabel === "inline") {
@@ -640,6 +718,7 @@ function outcomeForEvent(eventId, stateLabel) {
 
 function outcomeDetailsForEvent(eventId, stateLabel) {
   if (stateLabel === "missing") {
+    if (eventId === "cpi") return predictCpiOutcome().details;
     return ["USD outcome: unknown", "Yields: unknown", "Gold/NAS100: wait for actual data"];
   }
   if (stateLabel === "inline") {
@@ -748,14 +827,17 @@ function renderMonthlyRecap() {
       ${ECON_EVENTS.map((event) => {
         const data = eventData(event.id);
         const result = eventSurpriseState(event.id);
+        const cpiPrediction = event.id === "cpi" && result.state === "missing" ? predictCpiOutcome() : null;
+        const cardTone = cpiPrediction?.tone || result.tone;
+        const cardLabel = cpiPrediction?.label || result.label;
         const surpriseText = result.state === "missing"
           ? "Waiting for actual"
           : `${result.surprise > 0 ? "+" : ""}${result.surprise.toFixed(2)}${event.suffix || ""} surprise`;
         return `
-          <article class="recap-card ${result.tone}">
+          <article class="recap-card ${cardTone}">
             <div class="recap-head">
               <strong>${event.name}</strong>
-              <span>${result.label}</span>
+              <span>${cardLabel}</span>
             </div>
             <div class="recap-values">
               <small>Forecast <b>${formatEventValue(event, data.forecast)}</b></small>
