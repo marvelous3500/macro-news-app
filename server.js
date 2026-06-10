@@ -536,6 +536,15 @@ async function serveStatic(req, res) {
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://localhost:${PORT}`);
+    if (url.pathname === "/health" || url.pathname === "/api/wake") {
+      json(res, 200, {
+        ok: true,
+        status: "awake",
+        service: "macro-news-app",
+        updatedAt: new Date().toISOString()
+      });
+      return;
+    }
     if (url.pathname === "/api/news") {
       json(res, 200, await getNews());
       return;
